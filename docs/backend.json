@@ -1,0 +1,178 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the ImageCloak application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user.",
+          "format": "uuid"
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name of the user."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "displayName",
+        "createdAt"
+      ]
+    },
+    "EncodedImage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "EncodedImage",
+      "type": "object",
+      "description": "Represents an image that has been encoded with hidden data.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the encoded image.",
+          "format": "uuid"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who encoded the image. (Relationship: User 1:N EncodedImage)"
+        },
+        "carrierImageDescription": {
+          "type": "string",
+          "description": "Description of the carrier image used for encoding. If AI generated, a detailed prompt."
+        },
+        "encodingDateTime": {
+          "type": "string",
+          "description": "Timestamp indicating when the image was encoded.",
+          "format": "date-time"
+        },
+        "encryptionKey": {
+          "type": "string",
+          "description": "Reference to the encryption key used."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "carrierImageDescription",
+        "encodingDateTime",
+        "encryptionKey"
+      ]
+    },
+    "EncryptionKey": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "EncryptionKey",
+      "type": "object",
+      "description": "Represents an encryption key used to encode an image.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the encryption key.",
+          "format": "uuid"
+        },
+        "keyName": {
+          "type": "string",
+          "description": "Name of the encryption key for easy reference."
+        },
+        "algorithm": {
+          "type": "string",
+          "description": "Encryption algorithm used (e.g., AES, DES)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the key was created.",
+          "format": "date-time"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who created the key. (Relationship: User 1:N EncryptionKey)"
+        }
+      },
+      "required": [
+        "id",
+        "keyName",
+        "algorithm",
+        "createdAt",
+        "userId"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information. Path-based ownership ensures only the authenticated user can access their data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user, obtained from Firebase Auth."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/encodedImages/{encodedImageId}",
+        "definition": {
+          "entityName": "EncodedImage",
+          "schema": {
+            "$ref": "#/backend/entities/EncodedImage"
+          },
+          "description": "Stores information about encoded images created by the user. Path-based ownership ensures only the authenticated user can access their encoded images.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user, obtained from Firebase Auth."
+            },
+            {
+              "name": "encodedImageId",
+              "description": "The unique identifier of the encoded image."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/encryptionKeys/{encryptionKeyId}",
+        "definition": {
+          "entityName": "EncryptionKey",
+          "schema": {
+            "$ref": "#/backend/entities/EncryptionKey"
+          },
+          "description": "Stores encryption keys created by the user. Path-based ownership ensures only the authenticated user can access their encryption keys.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user, obtained from Firebase Auth."
+            },
+            {
+              "name": "encryptionKeyId",
+              "description": "The unique identifier of the encryption key."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability. User data, encoded images, and encryption keys are stored in separate collections, leveraging path-based ownership for enhanced security and simplified rules. The structure avoids hierarchical authorization dependencies by storing the EncodedImage and EncryptionKey under the users collection, facilitating atomic operations and straightforward debugging.  QAPs are supported through structural segregation; user-specific data resides under the `/users/{userId}` path, allowing for secure `list` operations limited to the authenticated user's resources. Consistent naming conventions and explicit state modeling (if any status fields are introduced later) contribute to improved data clarity and maintainability."
+  }
+}
