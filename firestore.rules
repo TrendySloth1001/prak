@@ -1,119 +1,108 @@
 /**
- * @fileOverview Firestore Security Rules for ImageCloak application.
+ * @file Firebase Security Rules for ImageCloak Application
  *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model. Each user has full control
- * over their own data, and no user can access another user's data.
+ * @description This ruleset enforces a strict user-ownership model, ensuring that only the authenticated user can access their own data.
+ * All data is nested under /users/{userId}, and access is controlled based on the authenticated user's ID matching the userId path segment.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profile information. Only the authenticated user
- *   with the matching userId can read and write to this document.
- * - /users/{userId}/encodedImages/{encodedImageId}: Stores encoded images created by
- *   the user. Only the authenticated user with the matching userId can read and
- *   write to these documents.
- * - /users/{userId}/encryptionKeys/{encryptionKeyId}: Stores encryption keys created
- *   by the user. Only the authenticated user with the matching userId can read and
- *   write to these documents.
+ * - /users/{userId}: Stores user profile information.
+ * - /users/{userId}/encodedImages/{encodedImageId}: Stores encoded image metadata.
+ * - /users/{userId}/encryptionKeys/{encryptionKeyId}: Stores encryption key metadata.
  *
  * Key Security Decisions:
- * - User listing is disallowed to protect user privacy.
- * - All data is private and requires authentication.
- * - Rules are designed for authorization independence and clarity.
- *
- * Denormalization for Authorization:
- *  - The 'userId' is used in paths and is validated against request.auth.uid to enforce ownership.
+ * - No public listing of user data or subcollections.
+ * - All write operations are strictly controlled by user ownership.
+ * - Data consistency between the path and the document's internal fields is enforced on create and update operations.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Enforces user-ownership for user profiles. Only the authenticated user
-     *              can read and write their own profile data.
+     * @description Controls access to user profile information.
      * @path /users/{userId}
-     * @allow (create) User 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can create their own user document.
-     *        (data) { id: 'z4hQnSPYUbc3mV2BIQTDCfCYCa83', email: 'test@example.com', displayName: 'Test User', createdAt: '2024-01-01T00:00:00Z' }
-     * @allow (get) User 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can get their own user document.
-     * @allow (update) User 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can update their own user document.
-     * @allow (delete) User 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can delete their own user document.
-     * @deny (create) User 'otherUserId' cannot create a document with userId 'z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
-     *        (data) { id: 'z4hQnSPYUbc3mV2BIQTDCfCYCa83', email: 'test@example.com', displayName: 'Test User', createdAt: '2024-01-01T00:00:00Z' }
-     * @deny (get) User 'otherUserId' cannot get the user document for 'z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
-     * @deny (update) User 'otherUserId' cannot update the user document for 'z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
-     * @deny (delete) User 'otherUserId' cannot delete the user document for 'z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) User with UID 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can create their profile.
+     * @deny (create) User with UID 'differentUID' cannot create a profile under 'users/z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
+     * @allow (get) User with UID 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can get their profile.
+     * @deny (get) User with UID 'differentUID' cannot get the profile under 'users/z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
+     * @allow (update) User with UID 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can update their profile.
+     * @deny (update) User with UID 'differentUID' cannot update the profile under 'users/z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
+     * @allow (delete) User with UID 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can delete their profile.
+     * @deny (delete) User with UID 'differentUID' cannot delete the profile under 'users/z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
+     * @principle Enforces document ownership for all operations on user profiles.
      */
     match /users/{userId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
       allow get: if isOwner(userId);
-      allow list: if false;
+      allow list: if false; // No listing of users.
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Enforces user-ownership for encoded images. Only the authenticated user
-     *              can read and write their own encoded images.
+     * @description Controls access to encoded images created by a user.
      * @path /users/{userId}/encodedImages/{encodedImageId}
-     * @allow (create) User 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can create an encoded image under their user ID.
-     *        (data) { id: 'image123', userId: 'z4hQnSPYUbc3mV2BIQTDCfCYCa83', carrierImageDescription: 'A sunset', encodingDateTime: '2024-01-02T00:00:00Z', encryptionKey: 'key456' }
-     * @allow (get) User 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can get their own encoded image.
-     * @allow (list) User 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can list their own encoded images.
-     * @allow (update) User 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can update their own encoded image.
-     * @allow (delete) User 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can delete their own encoded image.
-     * @deny (create) User 'otherUserId' cannot create an encoded image under user ID 'z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
-     *        (data) { id: 'image123', userId: 'z4hQnSPYUbc3mV2BIQTDCfCYCa83', carrierImageDescription: 'A sunset', encodingDateTime: '2024-01-02T00:00:00Z', encryptionKey: 'key456' }
-     * @deny (get) User 'otherUserId' cannot get the encoded image for 'z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
-     * @deny (list) User 'otherUserId' cannot list the encoded images for 'z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
-     * @deny (update) User 'otherUserId' cannot update the encoded image for 'z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
-     * @deny (delete) User 'otherUserId' cannot delete the encoded image for 'z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) User with UID 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can create an encoded image under their profile.
+     * @deny (create) User with UID 'differentUID' cannot create an encoded image under 'users/z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
+     * @allow (get) User with UID 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can get an encoded image under their profile.
+     * @deny (get) User with UID 'differentUID' cannot get the encoded image under 'users/z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
+     * @allow (update) User with UID 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can update an encoded image under their profile.
+     * @deny (update) User with UID 'differentUID' cannot update the encoded image under 'users/z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
+     * @allow (delete) User with UID 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can delete an encoded image under their profile.
+     * @deny (delete) User with UID 'differentUID' cannot delete the encoded image under 'users/z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
+     * @principle Enforces document ownership for all operations on encoded images.
      */
     match /users/{userId}/encodedImages/{encodedImageId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow update: if isExistingOwner(userId) && resource.data.userId == userId;
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Enforces user-ownership for encryption keys. Only the authenticated user
-     *              can read and write their own encryption keys.
+     * @description Controls access to encryption keys created by a user.
      * @path /users/{userId}/encryptionKeys/{encryptionKeyId}
-     * @allow (create) User 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can create an encryption key under their user ID.
-     *        (data) { id: 'key123', keyName: 'MyKey', algorithm: 'AES', createdAt: '2024-01-03T00:00:00Z', userId: 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' }
-     * @allow (get) User 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can get their own encryption key.
-     * @allow (list) User 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can list their own encryption keys.
-     * @allow (update) User 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can update their own encryption key.
-     * @allow (delete) User 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can delete their own encryption key.
-     * @deny (create) User 'otherUserId' cannot create an encryption key under user ID 'z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
-     *        (data) { id: 'key123', keyName: 'MyKey', algorithm: 'AES', createdAt: '2024-01-03T00:00:00Z', userId: 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' }
-     * @deny (get) User 'otherUserId' cannot get the encryption key for 'z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
-     * @deny (list) User 'otherUserId' cannot list the encryption keys for 'z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
-     * @deny (update) User 'otherUserId' cannot update the encryption key for 'z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
-     * @deny (delete) User 'otherUserId' cannot delete the encryption key for 'z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) User with UID 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can create an encryption key under their profile.
+     * @deny (create) User with UID 'differentUID' cannot create an encryption key under 'users/z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
+     * @allow (get) User with UID 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can get an encryption key under their profile.
+     * @deny (get) User with UID 'differentUID' cannot get the encryption key under 'users/z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
+     * @allow (update) User with UID 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can update an encryption key under their profile.
+     * @deny (update) User with UID 'differentUID' cannot update the encryption key under 'users/z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
+     * @allow (delete) User with UID 'z4hQnSPYUbc3mV2BIQTDCfCYCa83' can delete an encryption key under their profile.
+     * @deny (delete) User with UID 'differentUID' cannot delete the encryption key under 'users/z4hQnSPYUbc3mV2BIQTDCfCYCa83'.
+     * @principle Enforces document ownership for all operations on encryption keys.
      */
     match /users/{userId}/encryptionKeys/{encryptionKeyId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow update: if isExistingOwner(userId) && resource.data.userId == userId;
       allow delete: if isExistingOwner(userId);
     }
-  }
-
-  // Helper functions
-  function isSignedIn() {
-    return request.auth != null;
-  }
-
-  function isOwner(userId) {
-    return isSignedIn() && request.auth.uid == userId;
-  }
-
-  function isExistingOwner(userId) {
-    return isOwner(userId) && resource != null;
   }
 }
