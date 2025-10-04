@@ -47,12 +47,14 @@ export function upsertUserProfile(firestore: Firestore, user: User) {
  * @param userId - The ID of the user.
  * @param imageData - The metadata for the encoded image.
  * @param imageFile - The actual image file to upload.
+ * @param logCallback - A function to call with progress updates.
  */
 export async function saveEncodedImage(
     firestore: Firestore,
     userId: string,
     imageData: Omit<EncodedImage, 'id' | 'encodingDateTime' | 'carrierImageUrl' | 'carrierImageStoragePath'>,
-    imageFile: File
+    imageFile: File,
+    logCallback: (message: string) => void
 ): Promise<void> {
     const storage = getStorage();
     const imageId = doc(collection(firestore, 'tmp')).id; // Generate a unique ID
@@ -61,10 +63,14 @@ export async function saveEncodedImage(
 
     try {
         // 1. Upload the image file to Firebase Storage
+        logCallback('Uploading image to secure storage...');
         const uploadResult = await uploadBytes(storageRef, imageFile);
+        logCallback('Image upload complete.');
 
         // 2. Get the download URL for the uploaded file
+        logCallback('Generating permanent image URL...');
         const downloadURL = await getDownloadURL(uploadResult.ref);
+        logCallback('URL generated.');
 
         // 3. Prepare the data for Firestore
         const imageRef = doc(firestore, `users/${userId}/encodedImages`, imageId);
@@ -78,10 +84,14 @@ export async function saveEncodedImage(
         };
 
         // 4. Save the metadata to Firestore
+        logCallback('Saving image metadata to database...');
         await setDoc(imageRef, newImageData);
+        logCallback('Metadata saved.');
 
     } catch (error: any) {
         console.error("Error in saveEncodedImage:", error);
+        
+        const errorMessage = error.code ? `${error.code}: ${error.message}` : error.message;
         
         let permissionError: FirestorePermissionError;
 
@@ -100,6 +110,6 @@ export async function saveEncodedImage(
         }
         errorEmitter.emit('permission-error', permissionError);
         // Re-throw the error so the calling component can handle the UI state.
-        throw error;
+        throw new Error(errorMessage);
     }
 }

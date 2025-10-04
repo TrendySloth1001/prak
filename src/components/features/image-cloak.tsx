@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw, Palette, Type, Upload, Settings, ChevronDown } from 'lucide-react';
+import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw, Palette, Type, Upload, Settings, ChevronDown, CheckCircle2 } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from '@/firebase';
@@ -26,6 +26,7 @@ type DecodedDataType = { type: 'text'; content: string } | { type: 'file'; conte
 type CarrierSource = 'upload' | 'random';
 type FilterType = 'original' | 'grayscale' | 'sepia';
 type AlgorithmType = 'AES-256' | 'Serpent' | 'Twofish';
+type EncodingLog = { message: string; status: 'pending' | 'complete' | 'error' };
 
 
 const FileDropzone = ({ id, onFileChange, onDrop, onDragOver, preview, onClear, children, className, activeFilter }: { id?: string, onFileChange?: React.ChangeEventHandler<HTMLInputElement>, onDrop: React.DragEventHandler<HTMLLabelElement>, onDragOver: React.DragEventHandler<HTMLLabelElement>, preview: string | null, onClear: () => void, children?: React.ReactNode, className?: string, activeFilter?: FilterType }) => (
@@ -110,6 +111,8 @@ export default function ImageCloak() {
   const [activeFilter, setActiveFilter] = useState<FilterType>('original');
   const [watermark, setWatermark] = useState('');
   const [algorithm, setAlgorithm] = useState<AlgorithmType>('AES-256');
+
+  const [encodingLogs, setEncodingLogs] = useState<EncodingLog[]>([]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -288,33 +291,51 @@ export default function ImageCloak() {
     }
 
     setIsEncoding(true);
+    setEncodingLogs([]);
     if(encodedImage) URL.revokeObjectURL(encodedImage);
     setEncodedImage(null);
     
+    const addLog = (message: string, status: EncodingLog['status'] = 'pending') => {
+        setEncodingLogs(prev => {
+            const newLogs = [...prev];
+            const lastLog = newLogs[newLogs.length - 1];
+            if(lastLog?.status === 'pending') {
+                lastLog.status = 'complete';
+            }
+            // For 'error' status, we add a new log entry.
+            if(status === 'error' || newLogs.findIndex(l => l.message === message) === -1) {
+                 newLogs.push({ message, status });
+            }
+            return newLogs;
+        });
+    };
+
     try {
         const encodedImageFile = carrierImage;
 
         await saveEncodedImage(firestore, user.uid, {
             carrierImageDescription: carrierDescription,
-            encryptionKey: encodePassword, // In a real app, you would not save the raw password.
+            encryptionKey: encodePassword,
             algorithm: algorithm,
             watermark: watermark,
-        }, encodedImageFile);
+        }, encodedImageFile, addLog);
 
         const newEncodedImageUrl = URL.createObjectURL(encodedImageFile);
         setEncodedImage(newEncodedImageUrl);
+
+        addLog('Process complete!', 'complete');
 
         toast({
             title: "Image Processed & Saved",
             description: "Your data has been secretly embedded and saved to your profile.",
         });
 
-    } catch(error) {
-        console.error(error);
-         toast({
-            variant: "destructive",
-            title: "Encoding Failed",
-            description: "Could not save the encoded image. Check permissions and try again.",
+    } catch(error: any) {
+        addLog(error.message || 'An unknown error occurred.', 'error');
+        toast({
+          variant: "destructive",
+          title: "Encoding Failed",
+          description: error.message || "Could not save the encoded image. Check logs for details.",
         });
     } finally {
       setIsEncoding(false);
@@ -603,8 +624,22 @@ export default function ImageCloak() {
                               </AlertDescription>
                             </Alert>
                         )}
+                      
+                       {(isEncoding || encodingLogs.length > 0) && (
+                            <div className="w-full max-w-sm text-left p-4 bg-muted/50 rounded-lg animate-in fade-in space-y-2 mt-4">
+                                <p className="font-semibold text-center mb-2">Processing Logs</p>
+                                {encodingLogs.map((log, index) => (
+                                    <div key={index} className="flex items-center gap-2 text-sm">
+                                        {log.status === 'pending' && <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />}
+                                        {log.status === 'complete' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                                        {log.status === 'error' && <X className="h-4 w-4 text-destructive" />}
+                                        <span className={cn(log.status === 'error' && 'text-destructive')}>{log.message}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
 
-                      {encodedImage && (
+                      {encodedImage && !isEncoding && (
                         <div className="w-full max-w-sm text-center p-4 bg-muted/50 rounded-lg animate-in fade-in space-y-3">
                           <p className="font-medium text-green-400">Your image is processed and saved!</p>
                           <Button asChild variant="secondary" className="w-full">
