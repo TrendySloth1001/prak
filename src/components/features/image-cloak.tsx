@@ -8,9 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw, Palette } from 'lucide-react';
+import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw, Palette, Type, Upload } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from '@/firebase';
@@ -337,17 +336,19 @@ export default function ImageCloak() {
     }, 2000);
   };
   
-  const onClear = (type: 'carrier' | 'source') => {
+  const onClear = (type: 'carrier' | 'source' | 'secret') => {
     if (type === 'carrier') {
       if (carrierPreview) URL.revokeObjectURL(carrierPreview);
       setCarrierImage(null);
       setCarrierPreview(null);
       setCarrierDescription('');
       setActiveFilter('original');
-    } else {
+    } else if (type === 'source') {
       if (sourcePreview) URL.revokeObjectURL(sourcePreview);
       setSourceImage(null);
       setSourcePreview(null);
+    } else if (type === 'secret') {
+        setSecretFile(null);
     }
   }
 
@@ -355,6 +356,14 @@ export default function ImageCloak() {
     const key = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
     setEncodePassword(key);
   };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
 
   return (
     <div className="w-full">
@@ -447,37 +456,48 @@ export default function ImageCloak() {
                   {/* Right Column */}
                   <div className="space-y-6">
                     <Step step={3} title="Provide Secret Data">
-                      <RadioGroup value={dataType} onValueChange={(value: DataType) => setDataType(value)} className="flex space-x-4">
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="text" id="r1" />
-                          <Label htmlFor="r1">Text</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="file" id="r2" />
-                          <Label htmlFor="r2">File</Label>
-                        </div>
-                      </RadioGroup>
-                    
-                      {dataType === 'text' ? (
-                        <Textarea 
-                          placeholder="Enter your secret message here..." 
-                          value={secretText} 
-                          onChange={(e) => setSecretText(e.target.value)}
-                          rows={8}
-                          className="flex-grow"
-                        />
-                      ) : (
-                        <Label htmlFor="secret-file" className="flex items-center gap-3 rounded-md border border-input p-3 cursor-pointer hover:bg-muted/50 transition-colors">
-                          <FileIcon className="h-6 w-6 text-muted-foreground flex-shrink-0"/>
-                          <span className="flex-grow text-sm text-muted-foreground truncate">
-                            {secretFile ? secretFile.name : 'Choose a file...'}
-                          </span>
-                           <Button asChild variant="outline" size="sm" className="flex-shrink-0">
-                                <p>Browse</p>
-                           </Button>
-                          <Input id="secret-file" type="file" className="hidden" onChange={(e) => handleFileChange(e, 'secret')} />
-                        </Label>
-                      )}
+                       <Tabs value={dataType} onValueChange={(value) => setDataType(value as DataType)} className="w-full">
+                          <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="text">
+                                <Type className="mr-2 h-4 w-4" /> Text Message
+                            </TabsTrigger>
+                            <TabsTrigger value="file">
+                               <FileIcon className="mr-2 h-4 w-4" /> Any File
+                            </TabsTrigger>
+                          </TabsList>
+                          <TabsContent value="text" className="mt-4">
+                            <Textarea 
+                              placeholder="Enter your secret message here. The longer the message, the more it will affect the look of the final image (in a real app)." 
+                              value={secretText} 
+                              onChange={(e) => setSecretText(e.target.value)}
+                              rows={8}
+                              className="text-base"
+                            />
+                          </TabsContent>
+                          <TabsContent value="file" className="mt-4">
+                            {!secretFile ? (
+                                <Label htmlFor="secret-file" className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer bg-muted/25 hover:bg-muted/50 transition-colors">
+                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                        <Upload className="w-8 h-8 mb-3 text-muted-foreground" />
+                                        <p className="mb-2 text-sm text-foreground/80"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+                                        <p className="text-xs text-muted-foreground">Any file type</p>
+                                    </div>
+                                    <Input id="secret-file" type="file" className="hidden" onChange={(e) => handleFileChange(e, 'secret')} />
+                                </Label>
+                            ) : (
+                                <div className="flex items-center justify-between w-full h-40 border rounded-lg p-6 bg-muted/25">
+                                    <div className='space-y-1'>
+                                        <p className='font-medium text-lg leading-tight'>File Ready</p>
+                                        <p className='text-sm text-muted-foreground truncate max-w-xs' title={secretFile.name}>{secretFile.name}</p>
+                                        <p className='text-xs text-muted-foreground'>{formatFileSize(secretFile.size)}</p>
+                                    </div>
+                                    <Button type="button" variant="ghost" size="icon" onClick={() => onClear('secret')}>
+                                        <X className="h-5 w-5 text-destructive" />
+                                    </Button>
+                                </div>
+                            )}
+                          </TabsContent>
+                       </Tabs>
                     </Step>
 
                     <Separator />
@@ -604,5 +624,3 @@ export default function ImageCloak() {
     </div>
   );
 }
-
-    
