@@ -18,8 +18,8 @@ export function initializeFirebase() {
         storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     };
 
-    if (!appConfig.apiKey) {
-      console.error("Firebase API key is missing. Please check your .env file.");
+    if (!appConfig.apiKey || !appConfig.storageBucket) {
+      console.error("Firebase configuration is missing. Please check your .env file for API Key and Storage Bucket.");
       // You might want to throw an error here or handle it gracefully
     }
     

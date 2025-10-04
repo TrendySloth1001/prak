@@ -295,20 +295,21 @@ export default function ImageCloak() {
     if(encodedImage) URL.revokeObjectURL(encodedImage);
     setEncodedImage(null);
     
-    const addLog = (message: string, status: EncodingLog['status'] = 'pending') => {
-        setEncodingLogs(prev => {
-            const newLogs = [...prev];
-            const lastLog = newLogs[newLogs.length - 1];
-            if(lastLog?.status === 'pending') {
-                lastLog.status = 'complete';
-            }
-            // For 'error' status, we add a new log entry.
-            if(status === 'error' || newLogs.findIndex(l => l.message === message) === -1) {
-                 newLogs.push({ message, status });
-            }
-            return newLogs;
-        });
-    };
+    const addLog: (message: string, status?: EncodingLog['status']) => void = (message, status = 'pending') => {
+      setEncodingLogs(prev => {
+          const newLogs = [...prev];
+          const lastLog = newLogs.length > 0 ? newLogs[newLogs.length - 1] : null;
+
+          // If the last message was pending, update its status to complete before adding a new one.
+          if (lastLog && lastLog.status === 'pending' && status !== 'pending') {
+              lastLog.status = 'complete';
+          }
+          
+          // Add the new message
+          newLogs.push({ message, status });
+          return newLogs;
+      });
+  };
 
     try {
         const encodedImageFile = carrierImage;
@@ -331,7 +332,8 @@ export default function ImageCloak() {
         });
 
     } catch(error: any) {
-        addLog(error.message || 'An unknown error occurred.', 'error');
+        // The error is already logged by the saveEncodedImage function,
+        // so we just need to update the UI state here.
         toast({
           variant: "destructive",
           title: "Encoding Failed",
@@ -626,16 +628,20 @@ export default function ImageCloak() {
                         )}
                       
                        {(isEncoding || encodingLogs.length > 0) && (
-                            <div className="w-full max-w-sm text-left p-4 bg-muted/50 rounded-lg animate-in fade-in space-y-2 mt-4">
+                            <div className="w-full max-w-2xl text-left p-4 bg-muted/50 rounded-lg animate-in fade-in space-y-2 mt-4">
                                 <p className="font-semibold text-center mb-2">Processing Logs</p>
+                                <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
                                 {encodingLogs.map((log, index) => (
-                                    <div key={index} className="flex items-center gap-2 text-sm">
-                                        {log.status === 'pending' && <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />}
-                                        {log.status === 'complete' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
-                                        {log.status === 'error' && <X className="h-4 w-4 text-destructive" />}
-                                        <span className={cn(log.status === 'error' && 'text-destructive')}>{log.message}</span>
+                                    <div key={index} className="flex items-start gap-3 text-sm">
+                                        <div className="mt-0.5">
+                                            {log.status === 'pending' && <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />}
+                                            {log.status === 'complete' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                                            {log.status === 'error' && <X className="h-4 w-4 text-destructive" />}
+                                        </div>
+                                        <span className={cn('flex-1', log.status === 'error' && 'text-destructive font-mono text-xs')}>{log.message}</span>
                                     </div>
                                 ))}
+                                </div>
                             </div>
                         )}
 

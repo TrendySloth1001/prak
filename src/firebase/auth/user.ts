@@ -54,7 +54,7 @@ export async function saveEncodedImage(
     userId: string,
     imageData: Omit<EncodedImage, 'id' | 'encodingDateTime' | 'carrierImageUrl' | 'carrierImageStoragePath'>,
     imageFile: File,
-    logCallback: (message: string) => void
+    logCallback: (message: string, status?: 'pending' | 'complete' | 'error') => void
 ): Promise<void> {
     const storage = getStorage();
     const imageId = doc(collection(firestore, 'tmp')).id; // Generate a unique ID
@@ -65,12 +65,12 @@ export async function saveEncodedImage(
         // 1. Upload the image file to Firebase Storage
         logCallback('Uploading image to secure storage...');
         const uploadResult = await uploadBytes(storageRef, imageFile);
-        logCallback('Image upload complete.');
+        logCallback('Image upload complete.', 'complete');
 
         // 2. Get the download URL for the uploaded file
         logCallback('Generating permanent image URL...');
         const downloadURL = await getDownloadURL(uploadResult.ref);
-        logCallback('URL generated.');
+        logCallback('URL generated.', 'complete');
 
         // 3. Prepare the data for Firestore
         const imageRef = doc(firestore, `users/${userId}/encodedImages`, imageId);
@@ -86,30 +86,37 @@ export async function saveEncodedImage(
         // 4. Save the metadata to Firestore
         logCallback('Saving image metadata to database...');
         await setDoc(imageRef, newImageData);
-        logCallback('Metadata saved.');
+        logCallback('Metadata saved.', 'complete');
 
     } catch (error: any) {
         console.error("Error in saveEncodedImage:", error);
         
-        const errorMessage = error.code ? `${error.code}: ${error.message}` : error.message;
+        const errorMessage = error.code ? `[${error.code}] ${error.message}` : error.message;
         
+        // Always log the raw error message to the UI
+        logCallback(errorMessage, 'error');
+
         let permissionError: FirestorePermissionError;
 
-        if (error.code && (error.code.includes('storage') || error.code.includes('permission-denied'))) {
+        // Check if it's a storage permission error
+        if (error.code && (error.code.includes('storage/unauthorized') || error.code.includes('storage/object-not-found') || error.code.includes('permission-denied'))) {
              permissionError = new FirestorePermissionError({
                 path: storagePath,
-                operation: 'write',
-                requestResourceData: { note: `Attempted to upload to ${storagePath}` },
+                operation: 'write', // Representing upload as a 'write' operation
+                requestResourceData: { note: `Attempted to upload to Firebase Storage at path: ${storagePath}` },
             });
-        } else {
+        } else { // Assume it's a Firestore error
             permissionError = new FirestorePermissionError({
                 path: `users/${userId}/encodedImages/${imageId}`,
                 operation: 'create',
                 requestResourceData: imageData
             });
         }
+        
+        // Emit the structured error for dev overlay
         errorEmitter.emit('permission-error', permissionError);
-        // Re-throw the error so the calling component can handle the UI state.
+        
+        // Re-throw the error so the calling component can handle the UI state (e.g., stop loading spinner)
         throw new Error(errorMessage);
     }
 }
