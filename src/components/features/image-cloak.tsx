@@ -107,6 +107,7 @@ export default function ImageCloak() {
   const [carrierSource, setCarrierSource] = useState<CarrierSource>('upload');
   const [isGenerating, setIsGenerating] = useState(false);
   const [carrierDescription, setCarrierDescription] = useState('');
+  const [randomImageUrl, setRandomImageUrl] = useState<string>('');
   
   const [activeFilter, setActiveFilter] = useState<FilterType>('original');
   const [watermark, setWatermark] = useState('');
@@ -189,6 +190,7 @@ export default function ImageCloak() {
     if (carrierPreview) URL.revokeObjectURL(carrierPreview);
     setCarrierImage(null);
     setCarrierPreview(null);
+    setRandomImageUrl('');
     setActiveFilter('original');
     try {
       const randomSeed = Math.floor(Math.random() * 1000);
@@ -201,6 +203,7 @@ export default function ImageCloak() {
       const previewUrl = URL.createObjectURL(file);
       setCarrierPreview(previewUrl);
       setCarrierImage(file);
+      setRandomImageUrl(imageUrl); // Store the original public URL
       setCarrierDescription(`A random image from picsum.photos with seed ${randomSeed}`);
 
     } catch (error) {
@@ -222,6 +225,7 @@ export default function ImageCloak() {
         if(encodedImage) URL.revokeObjectURL(encodedImage);
         setEncodedImage(null);
         setCarrierSource('upload');
+        setRandomImageUrl(''); // Clear random image URL
         setActiveFilter('original');
         setWatermark('');
       } else if (type === 'source') {
@@ -251,6 +255,7 @@ export default function ImageCloak() {
         if(encodedImage) URL.revokeObjectURL(encodedImage);
         setEncodedImage(null);
         setCarrierSource('upload');
+        setRandomImageUrl(''); // Clear random image URL
         setActiveFilter('original');
         setWatermark('');
       } else if (type === 'source') {
@@ -285,7 +290,7 @@ export default function ImageCloak() {
       toast({
         variant: "destructive",
         title: "Missing Information",
-        description: "Please fill all required fields to generate the image.",
+        description: "Please fill all required fields.",
       })
       return;
     }
@@ -300,44 +305,45 @@ export default function ImageCloak() {
           const newLogs = [...prev];
           const lastLog = newLogs.length > 0 ? newLogs[newLogs.length - 1] : null;
 
-          // If the last message was pending, update its status to complete before adding a new one.
           if (lastLog && lastLog.status === 'pending' && status !== 'pending') {
               lastLog.status = 'complete';
           }
           
-          // Add the new message
           newLogs.push({ message, status });
           return newLogs;
       });
   };
 
     try {
-        const encodedImageFile = carrierImage;
-
         await saveEncodedImage(firestore, user.uid, {
             carrierImageDescription: carrierDescription,
+            carrierImageUrl: randomImageUrl, // Only save URL if it's a random image
             encryptionKey: encodePassword,
             algorithm: algorithm,
             watermark: watermark,
-        }, encodedImageFile, addLog);
+        }, addLog);
 
-        const newEncodedImageUrl = URL.createObjectURL(encodedImageFile);
-        setEncodedImage(newEncodedImageUrl);
+        // Since we don't upload, the encoded image is just the one in the canvas/preview
+        const canvas = canvasRef.current;
+        if(canvas) {
+            const newEncodedImageUrl = canvas.toDataURL('image/png');
+            setEncodedImage(newEncodedImageUrl);
+        } else if (carrierPreview) {
+             setEncodedImage(carrierPreview);
+        }
 
         addLog('Process complete!', 'complete');
 
         toast({
-            title: "Image Processed & Saved",
-            description: "Your data has been secretly embedded and saved to your profile.",
+            title: "Metadata Saved",
+            description: "Your image's metadata has been saved to your profile.",
         });
 
     } catch(error: any) {
-        // The error is already logged by the saveEncodedImage function,
-        // so we just need to update the UI state here.
         toast({
           variant: "destructive",
-          title: "Encoding Failed",
-          description: error.message || "Could not save the encoded image. Check logs for details.",
+          title: "Saving Failed",
+          description: error.message || "Could not save the image metadata.",
         });
     } finally {
       setIsEncoding(false);
@@ -400,6 +406,7 @@ export default function ImageCloak() {
       setCarrierImage(null);
       setCarrierPreview(null);
       setCarrierDescription('');
+      setRandomImageUrl('');
       setActiveFilter('original');
       setWatermark('');
     } else if (type === 'source') {
@@ -615,7 +622,7 @@ export default function ImageCloak() {
                         <h3 className="text-lg font-semibold tracking-tight">Ready to Go!</h3>
                         <Button type="submit" disabled={isEncoding || !user} size="lg" className="w-full max-w-sm">
                             <ShieldCheck className="mr-2 h-5 w-5" />
-                            {isEncoding ? 'Embedding Data...' : 'Generate & Save Encoded Image'}
+                            {isEncoding ? 'Embedding Data...' : 'Save Metadata'}
                         </Button>
 
                       {!user && (
@@ -647,9 +654,9 @@ export default function ImageCloak() {
 
                       {encodedImage && !isEncoding && (
                         <div className="w-full max-w-sm text-center p-4 bg-muted/50 rounded-lg animate-in fade-in space-y-3">
-                          <p className="font-medium text-green-400">Your image is processed and saved!</p>
+                          <p className="font-medium text-green-400">Metadata saved! You can download the image now.</p>
                           <Button asChild variant="secondary" className="w-full">
-                            <a href={encodedImage} download={carrierImage?.name || 'encoded-image.png'}>
+                            <a href={encodedImage} download={carrierImage?.name.replace(/\?_v=.*$/, '') || 'encoded-image.png'}>
                               <Download className="mr-2 h-4 w-4" /> Download Image
                             </a>
                           </Button>

@@ -11,7 +11,7 @@ import type { User } from 'firebase/auth';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import type { EncodedImage } from '@/lib/types';
-import { getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
+import { getStorage } from 'firebase/storage';
 
 /**
  * Creates a user profile document in Firestore if one doesn't already exist.
@@ -42,51 +42,38 @@ export function upsertUserProfile(firestore: Firestore, user: User) {
 
 
 /**
- * Uploads an image to Firebase Storage and saves its metadata to Firestore.
+ * Saves encoded image metadata to Firestore.
+ * Does NOT upload images to Firebase Storage.
  * @param firestore - The Firestore instance.
  * @param userId - The ID of the user.
  * @param imageData - The metadata for the encoded image.
- * @param imageFile - The actual image file to upload.
  * @param logCallback - A function to call with progress updates.
  */
 export async function saveEncodedImage(
     firestore: Firestore,
     userId: string,
-    imageData: Omit<EncodedImage, 'id' | 'encodingDateTime' | 'carrierImageUrl' | 'carrierImageStoragePath'>,
-    imageFile: File,
+    imageData: Omit<EncodedImage, 'id' | 'encodingDateTime' | 'carrierImageStoragePath'>,
     logCallback: (message: string, status?: 'pending' | 'complete' | 'error') => void
 ): Promise<void> {
-    const storage = getStorage();
     const imageId = doc(collection(firestore, 'tmp')).id; // Generate a unique ID
-    const storagePath = `users/${userId}/encodedImages/${imageId}_${imageFile.name}`;
-    const storageRef = ref(storage, storagePath);
-
+    
     try {
-        // 1. Upload the image file to Firebase Storage
-        logCallback('Uploading image to secure storage...');
-        const uploadResult = await uploadBytes(storageRef, imageFile);
-        logCallback('Image upload complete.', 'complete');
-
-        // 2. Get the download URL for the uploaded file
-        logCallback('Generating permanent image URL...');
-        const downloadURL = await getDownloadURL(uploadResult.ref);
-        logCallback('URL generated.', 'complete');
-
-        // 3. Prepare the data for Firestore
+        logCallback('Preparing image metadata...');
         const imageRef = doc(firestore, `users/${userId}/encodedImages`, imageId);
+        
         const newImageData: EncodedImage = {
             ...imageData,
             id: imageRef.id,
             userId: userId,
             encodingDateTime: serverTimestamp() as any,
-            carrierImageUrl: downloadURL,
-            carrierImageStoragePath: storagePath,
+            carrierImageStoragePath: '', // No longer storing in Firebase Storage
         };
+        logCallback('Metadata prepared.', 'complete');
 
-        // 4. Save the metadata to Firestore
+        // Save the metadata to Firestore
         logCallback('Saving image metadata to database...');
         await setDoc(imageRef, newImageData);
-        logCallback('Metadata saved.', 'complete');
+        logCallback('Metadata saved successfully.', 'complete');
 
     } catch (error: any) {
         console.error("Error in saveEncodedImage:", error);
@@ -96,22 +83,11 @@ export async function saveEncodedImage(
         // Always log the raw error message to the UI
         logCallback(errorMessage, 'error');
 
-        let permissionError: FirestorePermissionError;
-
-        // Check if it's a storage permission error
-        if (error.code && (error.code.includes('storage/unauthorized') || error.code.includes('storage/object-not-found') || error.code.includes('permission-denied'))) {
-             permissionError = new FirestorePermissionError({
-                path: storagePath,
-                operation: 'write', // Representing upload as a 'write' operation
-                requestResourceData: { note: `Attempted to upload to Firebase Storage at path: ${storagePath}` },
-            });
-        } else { // Assume it's a Firestore error
-            permissionError = new FirestorePermissionError({
-                path: `users/${userId}/encodedImages/${imageId}`,
-                operation: 'create',
-                requestResourceData: imageData
-            });
-        }
+        const permissionError = new FirestorePermissionError({
+            path: `users/${userId}/encodedImages/${imageId}`,
+            operation: 'create',
+            requestResourceData: imageData
+        });
         
         // Emit the structured error for dev overlay
         errorEmitter.emit('permission-error', permissionError);
