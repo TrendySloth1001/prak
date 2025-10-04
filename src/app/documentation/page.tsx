@@ -119,12 +119,14 @@ NEXT_PUBLIC_BUILDERS="NIKHIL KUMAWAT,Your Name"`}
                            <li>In the "Your apps" card, click on the **Web icon** (<code className="bg-muted/50 text-foreground p-1 rounded-sm">&lt;/&gt;</code>) to register a new web app.</li>
                            <li>Give your app a nickname (e.g., "ImageCloak App") and click **"Register app"**. You can skip the "Add Firebase SDK" step.</li>
                            <li>After registration, you will be taken back to the Project Settings page. In the "Your apps" card, find the **SDK setup and configuration** section and select **"Config"**.</li>
-                           <li>You will see a `firebaseConfig` object. Copy the values from this object into your `.env` file. For example:
-                            <ul className="list-disc pl-6 mt-2">
-                                <li>`apiKey` goes into `NEXT_PUBLIC_FIREBASE_API_KEY`</li>
-                                <li>`authDomain` goes into `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`</li>
-                                <li>`projectId` goes into `NEXT_PUBLIC_FIREBASE_PROJECT_ID`</li>
-                                {/* ...and so on for the rest of the values. */}
+                           <li>You will see a <code className="bg-muted/50 text-foreground p-1 rounded-sm">firebaseConfig</code> object. This contains all the credentials you need. Copy the values from this object into your <code className="bg-muted/50 text-foreground p-1 rounded-sm">.env</code> file.
+                            <ul className="list-disc pl-6 mt-4 space-y-2">
+                                <li>Copy the <code className="bg-muted/50 text-foreground p-1 rounded-sm">apiKey</code> value and paste it into <code className="bg-muted/50 text-foreground p-1 rounded-sm">NEXT_PUBLIC_FIREBASE_API_KEY</code>.</li>
+                                <li>Copy the <code className="bg-muted/50 text-foreground p-1 rounded-sm">authDomain</code> value and paste it into <code className="bg-muted/50 text-foreground p-1 rounded-sm">NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN</code>.</li>
+                                <li>Copy the <code className="bg-muted/50 text-foreground p-1 rounded-sm">projectId</code> value and paste it into <code className="bg-muted/50 text-foreground p-1 rounded-sm">NEXT_PUBLIC_FIREBASE_PROJECT_ID</code>.</li>
+                                <li>Copy the <code className="bg-muted/50 text-foreground p-1 rounded-sm">storageBucket</code> value and paste it into <code className="bg-muted/50 text-foreground p-1 rounded-sm">NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET</code>.</li>
+                                <li>Copy the <code className="bg-muted/50 text-foreground p-1 rounded-sm">messagingSenderId</code> value and paste it into <code className="bg-muted/50 text-foreground p-1 rounded-sm">NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID</code>.</li>
+                                <li>Copy the <code className="bg-muted/50 text-foreground p-1 rounded-sm">appId</code> value and paste it into <code className="bg-muted/50 text-foreground p-1 rounded-sm">NEXT_PUBLIC_FIREBASE_APP_ID</code>.</li>
                             </ul>
                            </li>
                         </ol>
