@@ -3,23 +3,23 @@ import Header from '@/components/layout/header';
 import { ClientFooter } from '@/components/layout/footer';
 import ImageCloak from '@/components/features/image-cloak';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Lock, FilePlus, DownloadCloud } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Binary, Puzzle } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const features = [
   {
-    icon: <Lock className="h-10 w-10 text-primary" />,
+    icon: <ShieldCheck className="h-10 w-10 text-accent" />,
     title: 'Secure Encryption',
     description: 'Protect your hidden data with strong, password-based encryption. Only you and those you trust can reveal the secret.',
   },
   {
-    icon: <FilePlus className="h-10 w-10 text-primary" />,
+    icon: <Binary className="h-10 w-10 text-accent" />,
     title: 'Text & File Support',
     description: 'Embed anything from a simple text message to important documents or files directly within your image carrier.',
   },
   {
-    icon: <DownloadCloud className="h-10 w-10 text-primary" />,
-    title: 'Easy to Use',
+    icon: <Puzzle className="h-10 w-10 text-accent" />,
+    title: 'Easy Steganography',
     description: 'A simple, two-step process for both encoding and decoding. No complex software or technical knowledge required.',
   },
 ];
@@ -49,15 +49,16 @@ export default function Home() {
       <Header />
       <main className="flex-grow">
         {/* Hero Section */}
-        <section className="py-20 md:py-32 text-center animate-fade-in-down">
-          <div className="container mx-auto px-4">
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tighter text-foreground mb-4">
+        <section className="py-24 md:py-40 text-center animate-fade-in-down relative overflow-hidden">
+           <div className="absolute inset-0 bg-grid-slate-900/[0.04] bg-[bottom_1px_center] dark:bg-grid-slate-400/[0.05] dark:bg-bottom mask-image:[linear-gradient(to_bottom,transparent,black)]"></div>
+          <div className="container mx-auto px-4 relative">
+            <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-foreground mb-4">
               Hide Secrets in Plain Sight
             </h1>
             <p className="max-w-3xl mx-auto text-lg md:text-xl text-muted-foreground mb-8">
-              ImageCloak uses steganography to let you embed secret messages or files within ordinary images. Secure, simple, and powerful.
+              ImageCloak uses modern steganography to let you embed secret messages or files within ordinary images. Secure, simple, and powerful.
             </p>
-            <Button size="lg" asChild>
+            <Button size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90" asChild>
               <a href="#app">
                 Try ImageCloak Now <ArrowRight className="ml-2 h-5 w-5" />
               </a>
@@ -66,13 +67,13 @@ export default function Home() {
         </section>
 
         {/* Features Section */}
-        <section className="py-16 bg-muted/50">
+        <section className="py-20 bg-background">
           <div className="container mx-auto px-4">
-            <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div className="grid md:grid-cols-3 gap-8">
               {features.map((feature, index) => (
-                <div key={index} className="p-6 bg-background rounded-lg shadow-sm animate-fade-in-up" style={{ animationDelay: `${index * 200}ms` }}>
-                  <div className="flex justify-center mb-4">{feature.icon}</div>
-                  <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
+                <div key={index} className="p-8 bg-card rounded-lg shadow-sm border border-border/50 animate-fade-in-up transition-transform duration-300 hover:scale-105 hover:shadow-lg" style={{ animationDelay: `${index * 200}ms` }}>
+                  <div className="flex items-center justify-center h-16 w-16 rounded-full bg-secondary mb-5">{feature.icon}</div>
+                  <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
                   <p className="text-muted-foreground">{feature.description}</p>
                 </div>
               ))}
@@ -81,14 +82,14 @@ export default function Home() {
         </section>
 
         {/* App Section */}
-        <section id="app" className="py-20 md:py-24">
+        <section id="app" className="py-20 md:py-24 bg-secondary/50">
           <div className="container mx-auto px-4">
             <ImageCloak />
           </div>
         </section>
 
         {/* FAQ Section */}
-        <section className="py-16 bg-muted/50">
+        <section className="py-20 bg-background">
           <div className="container mx-auto px-4 max-w-3xl">
              <h2 className="text-3xl font-bold text-center mb-8">Frequently Asked Questions</h2>
             <Accordion type="single" collapsible className="w-full">

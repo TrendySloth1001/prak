@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw, Palette, Type, Upload, Settings, ChevronDown, CheckCircle2, FileType, Image as ImageIcon, Eye, EyeOff } from 'lucide-react';
+import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw, Palette, Type, Upload, Settings, ChevronDown, CheckCircle2, FileType, Image as ImageIcon, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from '@/firebase';
@@ -36,7 +36,7 @@ const FileDropzone = ({ id, onFileChange, onDrop, onDragOver, preview, onClear, 
         onDrop={onDrop}
         onDragOver={onDragOver}
         className={cn(
-          `flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted/80 transition-colors`,
+          `flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-muted/80 transition-colors`,
           preview ? 'border-primary' : 'border-border',
           className
         )}
@@ -74,7 +74,7 @@ const FileDropzone = ({ id, onFileChange, onDrop, onDragOver, preview, onClear, 
 const Step = ({ step, title, children }: { step: number; title: string; children: React.ReactNode }) => (
     <div className="space-y-4">
         <div className="flex items-center gap-4">
-            <div className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-primary text-primary-foreground font-bold">{step}</div>
+            <div className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-accent text-accent-foreground font-bold">{step}</div>
             <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
         </div>
         <div className="pl-12">
@@ -151,7 +151,7 @@ export default function ImageCloak() {
     if (watermarkText) {
         ctx.filter = 'none'; // Reset filter to draw text correctly
         ctx.font = `${Math.max(24, canvas.width / 30)}px Inter, sans-serif`;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
         ctx.textAlign = 'right';
         ctx.textBaseline = 'bottom';
         ctx.fillText(watermarkText, canvas.width - 20, canvas.height - 20);
@@ -511,7 +511,7 @@ export default function ImageCloak() {
     }
 
     return (
-        <div className="flex flex-col items-center justify-center p-8 text-center bg-muted/50 rounded-lg">
+        <div className="flex flex-col items-center justify-center p-8 text-center bg-muted rounded-lg">
             <FileType className="h-12 w-12 text-muted-foreground" />
             <p className="mt-4 font-semibold">{file.name}</p>
             <p className="text-sm text-muted-foreground">No preview available for this file type.</p>
@@ -530,10 +530,10 @@ export default function ImageCloak() {
       <canvas ref={canvasRef} className="hidden"></canvas>
       <div className="text-center mb-12">
         <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Try ImageCloak</h2>
-        <p className="max-w-2xl mx-auto mt-2 text-muted-foreground">Embed or extract data in two simple steps.</p>
+        <p className="max-w-2xl mx-auto mt-2 text-muted-foreground">Embed or extract data in simple steps.</p>
       </div>
       <Tabs defaultValue="encode" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-lg mx-auto">
+        <TabsList className="grid w-full grid-cols-2 max-w-lg mx-auto bg-secondary">
           <TabsTrigger value="encode">
             <FileText className="mr-2 h-4 w-4" /> Encode
           </TabsTrigger>
@@ -543,7 +543,7 @@ export default function ImageCloak() {
         </TabsList>
 
         <TabsContent value="encode">
-          <Card className="max-w-6xl mx-auto">
+          <Card className="max-w-6xl mx-auto bg-card/80 backdrop-blur-sm">
             <CardHeader>
               <CardTitle>Embed Data into an Image</CardTitle>
               <CardDescription>Hide a secret message or a small file within an image. Only those with the password can retrieve it.</CardDescription>
@@ -639,7 +639,7 @@ export default function ImageCloak() {
                           </TabsContent>
                           <TabsContent value="file" className="mt-4">
                             {!secretFile ? (
-                                <Label htmlFor="secret-file" className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer bg-muted/25 hover:bg-muted/50 transition-colors">
+                                <Label htmlFor="secret-file" className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted/80 transition-colors">
                                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                         <Upload className="w-8 h-8 mb-3 text-muted-foreground" />
                                         <p className="mb-2 text-sm text-foreground/80"><span className="font-semibold">Click to upload</span> or drag and drop</p>
@@ -648,7 +648,7 @@ export default function ImageCloak() {
                                     <Input id="secret-file" type="file" className="hidden" onChange={(e) => handleFileChange(e, 'secret')} />
                                 </Label>
                             ) : (
-                                <div className="flex items-center justify-between w-full h-40 border rounded-lg p-6 bg-muted/25">
+                                <div className="flex items-center justify-between w-full h-40 border rounded-lg p-6 bg-muted/50">
                                     <div className='space-y-1'>
                                         <p className='font-medium text-lg leading-tight'>File Ready</p>
                                         <p className='text-sm text-muted-foreground truncate max-w-xs' title={secretFile.name}>{secretFile.name}</p>
@@ -714,7 +714,7 @@ export default function ImageCloak() {
                     
                     <div className="flex flex-col items-center gap-4 w-full">
                         <h3 className="text-lg font-semibold tracking-tight">Ready to Go!</h3>
-                        <Button type="submit" disabled={isEncoding || !user} size="lg" className="w-full max-w-sm">
+                        <Button type="submit" disabled={isEncoding || !user} size="lg" className="w-full max-w-sm bg-accent text-accent-foreground hover:bg-accent/90">
                             <ShieldCheck className="mr-2 h-5 w-5" />
                             {isEncoding ? 'Embedding Data...' : 'Save Metadata'}
                         </Button>
@@ -723,7 +723,7 @@ export default function ImageCloak() {
                             <Alert variant="destructive" className="mt-2 max-w-sm w-full">
                               <AlertDescription className="flex items-center justify-center">
                                 Please sign in to continue.
-                                <Button variant="link" className="p-0 h-auto ml-2" onClick={signInWithGoogle}>Sign In</Button>
+                                <Button variant="link" className="p-0 h-auto ml-2 text-destructive-foreground" onClick={signInWithGoogle}>Sign In</Button>
                               </AlertDescription>
                             </Alert>
                         )}
@@ -734,7 +734,7 @@ export default function ImageCloak() {
 
                       {encodedImage && !isEncoding && (
                         <div className="w-full max-w-sm text-center p-4 bg-muted/50 rounded-lg animate-in fade-in space-y-3">
-                          <p className="font-medium text-green-400">Metadata saved! You can download the image now.</p>
+                          <p className="font-medium text-green-600">Metadata saved! You can download the image now.</p>
                           <Button asChild variant="secondary" className="w-full">
                             <a href={encodedImage} download={carrierImage?.name.replace(/\?_v=.*$/, '') || 'encoded-image.png'}>
                               <Download className="mr-2 h-4 w-4" /> Download Image
@@ -750,13 +750,20 @@ export default function ImageCloak() {
         </TabsContent>
 
         <TabsContent value="decode">
-          <Card className="max-w-4xl mx-auto">
+          <Card className="max-w-4xl mx-auto bg-card/80 backdrop-blur-sm">
             <CardHeader>
               <CardTitle>Extract Data from an Image</CardTitle>
               <CardDescription>Upload an image and provide the password to reveal any hidden data.</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleDecode} className="space-y-6">
+                <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>One-Time Extraction</AlertTitle>
+                    <AlertDescription>
+                        As a security feature, data can only be extracted from an image once per session. To extract again, please re-upload the image.
+                    </AlertDescription>
+                </Alert>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                   <div className="space-y-4">
                     <Label className='pl-1'>1. Source Image</Label>
@@ -777,7 +784,7 @@ export default function ImageCloak() {
                         <Input id="decode-password" type="password" placeholder="Enter secret key to decrypt" className="pl-10" value={decodePassword} onChange={(e) => setDecodePassword(e.target.value)} />
                       </div>
                     </div>
-                    <Button type="submit" disabled={isDecoding} className="w-full">
+                    <Button type="submit" disabled={isDecoding} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
                       {isDecoding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       {isDecoding ? 'Extracting...' : 'Extract Data'}
                     </Button>
@@ -792,7 +799,7 @@ export default function ImageCloak() {
 
                 <div className="pt-4 min-h-[110px]">
                    {decodedData && !isDecoding && (
-                    <Alert variant="default" className="bg-green-100 dark:bg-green-900/50 border-green-300 dark:border-green-700 animate-in fade-in">
+                    <Alert variant="default" className="bg-green-900/10 border-green-700/20 animate-in fade-in">
                       <ShieldCheck className="h-4 w-4 !text-green-600 dark:!text-green-400" />
                       <AlertTitle className="text-green-800 dark:text-green-300">Data Extracted Successfully</AlertTitle>
                       <AlertDescription>

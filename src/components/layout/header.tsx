@@ -22,8 +22,8 @@ function UserProfile() {
 
   if (!user) {
     return (
-      <Button onClick={signInWithGoogle}>
-        Login
+      <Button onClick={signInWithGoogle} variant="outline" className="bg-background/80">
+        Login with Google
       </Button>
     );
   }
@@ -31,8 +31,8 @@ function UserProfile() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-9 w-9">
+        <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+          <Avatar className="h-10 w-10">
             <AvatarImage
               src={user.photoURL ?? ''}
               alt={user.displayName ?? 'User'}
@@ -72,10 +72,10 @@ function UserProfile() {
 
 export default function Header() {
   return (
-    <header className="border-b border-border/80 bg-background/95 backdrop-blur-sm sticky top-0 z-40">
+    <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-40">
       <div className="container mx-auto px-4 h-16 flex items-center">
         <div className="flex items-center gap-3">
-          <LockKeyhole className="w-7 h-7 text-primary" />
+          <LockKeyhole className="w-7 h-7 text-accent" />
           <h1 className="text-2xl font-bold text-foreground tracking-tight">ImageCloak</h1>
         </div>
         <div className="ml-auto">

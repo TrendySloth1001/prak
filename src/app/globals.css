@@ -5,73 +5,48 @@
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
+    --background: 200 100% 95%;
+    --foreground: 206 24% 10%;
+    --card: 200 100% 98%;
+    --card-foreground: 206 24% 10%;
+    --popover: 200 100% 98%;
+    --popover-foreground: 206 24% 10%;
+    --primary: 183 100% 74%;
+    --primary-foreground: 206 24% 10%;
+    --secondary: 206 100% 97%;
+    --secondary-foreground: 206 24% 10%;
+    --muted: 206 30% 90%;
+    --muted-foreground: 206 10% 45%;
+    --accent: 206 90% 35%;
     --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 0 0% 60%;
-    --chart-2: 0 0% 80%;
-    --chart-3: 0 0% 40%;
-    --chart-4: 0 0% 70%;
-    --chart-5: 0 0% 50%;
+    --border: 206 30% 85%;
+    --input: 206 30% 85%;
+    --ring: 206 90% 35%;
     --radius: 0.5rem;
-    --sidebar-background: 240 10% 3.9%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 0 0% 98%;
-    --sidebar-primary-foreground: 240 5.9% 10%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 0 0% 83.1%;
   }
+
   .dark {
-    --background: 240 10% 3.9%;
+    --background: 206 24% 10%;
     --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
+    --card: 206 24% 10%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
+    --popover: 206 24% 10%;
     --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
+    --primary: 183 100% 74%;
+    --primary-foreground: 206 24% 10%;
+    --secondary: 206 15% 20%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
+    --muted: 206 15% 20%;
+    --muted-foreground: 206 5% 65%;
+    --accent: 206 90% 35%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 0 0% 60%;
-    --chart-2: 0 0% 80%;
-    --chart-3: 0 0% 40%;
-    --chart-4: 0 0% 70%;
-    --chart-5: 0 0% 50%;
-    --sidebar-background: 240 10% 3.9%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 0 0% 98%;
-    --sidebar-primary-foreground: 240 5.9% 10%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 0 0% 83.1%;
+    --border: 206 15% 20%;
+    --input: 206 15% 20%;
+    --ring: 206 90% 35%;
   }
 }
 
@@ -81,9 +56,24 @@
   }
   body {
     @apply bg-background text-foreground;
-     background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    animation: scrollBg 180s linear infinite;
+    overflow-x: hidden;
   }
+  
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    background: 
+      radial-gradient(ellipse 80% 80% at 50% -20%, hsl(183, 100%, 85%), transparent),
+      radial-gradient(ellipse 80% 80% at 80% 40%, hsl(206, 90%, 75%), transparent),
+      radial-gradient(ellipse 80% 80% at 20% 60%, hsl(183, 100%, 74%), transparent);
+    animation: subtle-gradient-animation 20s ease-in-out infinite;
+  }
+  
   html {
     scroll-behavior: smooth;
   }
@@ -99,11 +89,17 @@
   }
 }
 
-@keyframes scrollBg {
+@keyframes subtle-gradient-animation {
   0% {
-    background-position: 0 0;
+    transform: translate(0, 0);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translate(10px, 20px) scale(1.1);
+    opacity: 1;
   }
   100% {
-    background-position: -1000px -1000px;
+    transform: translate(0, 0);
+    opacity: 0.8;
   }
 }
