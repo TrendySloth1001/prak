@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,20 +10,23 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw } from 'lucide-react';
+import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw, Palette } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from '@/firebase';
 import { signInWithGoogle } from '@/firebase/auth/auth-helpers';
 import { saveEncodedImage } from '@/firebase/auth/user';
+import { cn } from '@/lib/utils';
 
 type DataType = 'text' | 'file';
 type DecodedDataType = { type: 'text'; content: string } | { type: 'file'; content: File };
 type CarrierSource = 'upload' | 'random';
+type FilterType = 'original' | 'grayscale' | 'sepia';
+
 
 export default function ImageCloak() {
   const { toast } = useToast();
-  const { user, firestore, storage } = useFirebase();
+  const { user, firestore } = useFirebase();
 
   const [carrierImage, setCarrierImage] = useState<File | null>(null);
   const [carrierPreview, setCarrierPreview] = useState<string | null>(null);
@@ -45,6 +48,9 @@ export default function ImageCloak() {
   const [carrierSource, setCarrierSource] = useState<CarrierSource>('upload');
   const [isGenerating, setIsGenerating] = useState(false);
   const [carrierDescription, setCarrierDescription] = useState('');
+  
+  const [activeFilter, setActiveFilter] = useState<FilterType>('original');
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
 
   useEffect(() => {
@@ -55,15 +61,58 @@ export default function ImageCloak() {
       if (decodedFileUrl) URL.revokeObjectURL(decodedFileUrl);
     };
   }, [carrierPreview, sourcePreview, encodedImage, decodedFileUrl]);
+  
+  const applyFilterToCanvas = (image: HTMLImageElement, filter: FilterType) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+
+    if (filter === 'grayscale') {
+      ctx.filter = 'grayscale(100%)';
+    } else if (filter === 'sepia') {
+      ctx.filter = 'sepia(100%)';
+    } else {
+      ctx.filter = 'none';
+    }
+
+    ctx.drawImage(image, 0, 0);
+  };
+  
+  const handleFilterChange = (filter: FilterType) => {
+    if (!carrierPreview) return;
+    setActiveFilter(filter);
+    const img = document.createElement('img');
+    img.crossOrigin = 'anonymous';
+    img.src = carrierPreview;
+    img.onload = () => {
+      applyFilterToCanvas(img, filter);
+      const canvas = canvasRef.current;
+      if (canvas) {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const filteredFile = new File([blob], carrierImage?.name || 'filtered.png', { type: 'image/png' });
+            setCarrierImage(filteredFile);
+          }
+        }, 'image/png');
+      }
+    };
+  };
 
   const handleGenerateRandomImage = async () => {
     setIsGenerating(true);
     if (carrierPreview) URL.revokeObjectURL(carrierPreview);
     setCarrierImage(null);
     setCarrierPreview(null);
+    setActiveFilter('original');
     try {
       const randomSeed = Math.floor(Math.random() * 1000);
       const imageUrl = `https://picsum.photos/seed/${randomSeed}/800/600`;
+      
       const response = await fetch(imageUrl);
       const blob = await response.blob();
       const file = new File([blob], `random-image-${randomSeed}.jpg`, { type: 'image/jpeg' });
@@ -92,6 +141,7 @@ export default function ImageCloak() {
         if(encodedImage) URL.revokeObjectURL(encodedImage);
         setEncodedImage(null);
         setCarrierSource('upload');
+        setActiveFilter('original');
       } else if (type === 'source') {
         if(sourcePreview) URL.revokeObjectURL(sourcePreview);
         setSourceImage(file);
@@ -118,6 +168,7 @@ export default function ImageCloak() {
         if(encodedImage) URL.revokeObjectURL(encodedImage);
         setEncodedImage(null);
         setCarrierSource('upload');
+        setActiveFilter('original');
       } else if (type === 'source') {
         if(sourcePreview) URL.revokeObjectURL(sourcePreview);
         setSourceImage(file);
@@ -141,7 +192,7 @@ export default function ImageCloak() {
 
   const handleEncode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
+    if (!user || !firestore) {
       toast({ title: "Please sign in", description: "You must be signed in to encode images.", variant: "destructive", action: <Button onClick={signInWithGoogle}>Sign In</Button> });
       return;
     }
@@ -159,14 +210,13 @@ export default function ImageCloak() {
     setEncodedImage(null);
 
     try {
-        // In a real steganography app, the `carrierImage` would be processed
-        // to embed the secret data, and the result would be a new image file.
-        // For this simulation, we'll just use the original carrierImage as the "encoded" one.
+        // This is a simulation.
+        // A real steganography app would embed data into the image here.
         const encodedImageFile = carrierImage;
 
         await saveEncodedImage(firestore, user.uid, {
             carrierImageDescription: carrierDescription,
-            encryptionKey: encodePassword, // For simplicity. In real app, store a key reference.
+            encryptionKey: encodePassword,
         }, encodedImageFile);
 
         const newEncodedImageUrl = URL.createObjectURL(encodedImageFile);
@@ -210,6 +260,8 @@ export default function ImageCloak() {
 
     // Simulate decoding process
     setTimeout(() => {
+      // This is a simulation. A real app would check if the password matches
+      // the key used during the (simulated) encoding.
       if (decodePassword === encodePassword && encodePassword !== '') {
         if (dataType === 'text' && secretText) {
           setDecodedData({ type: 'text', content: secretText });
@@ -218,7 +270,7 @@ export default function ImageCloak() {
           setDecodedData({ type: 'file', content: secretFile });
           setDecodedFileUrl(url);
         } else {
-            setDecodeError('No data was encoded, or the original data is missing.');
+            setDecodeError('No data was originally encoded in this session, or the original data is missing.');
         }
       } else {
         setDecodeError('Decryption failed. Invalid password or no data found in the image.');
@@ -233,6 +285,7 @@ export default function ImageCloak() {
       setCarrierImage(null);
       setCarrierPreview(null);
       setCarrierDescription('');
+      setActiveFilter('original');
     } else {
       if (sourcePreview) URL.revokeObjectURL(sourcePreview);
       setSourceImage(null);
@@ -245,16 +298,29 @@ export default function ImageCloak() {
     setEncodePassword(key);
   };
 
-  const FileDropzone = ({ id, onFileChange, onDrop, onDragOver, preview, onClear, children }: { id?: string, onFileChange?: React.ChangeEventHandler<HTMLInputElement>, onDrop: React.DragEventHandler<HTMLLabelElement>, onDragOver: React.DragEventHandler<HTMLLabelElement>, preview: string | null, onClear: () => void, children?: React.ReactNode }) => (
+  const FileDropzone = ({ id, onFileChange, onDrop, onDragOver, preview, onClear, children, className }: { id?: string, onFileChange?: React.ChangeEventHandler<HTMLInputElement>, onDrop: React.DragEventHandler<HTMLLabelElement>, onDragOver: React.DragEventHandler<HTMLLabelElement>, preview: string | null, onClear: () => void, children?: React.ReactNode, className?: string }) => (
     <div className="relative">
       <Label
         htmlFor={id}
         onDrop={onDrop}
         onDragOver={onDragOver}
-        className={`flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted/80 transition-colors ${preview ? 'border-primary' : 'border-border'}`}
+        className={cn(
+          `flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted/80 transition-colors`,
+          preview ? 'border-primary' : 'border-border',
+          className
+        )}
       >
         {preview ? (
-          <Image src={preview} alt="Image preview" fill className="object-contain rounded-lg p-2" />
+            <Image 
+                src={preview} 
+                alt="Image preview" 
+                fill 
+                className={cn(
+                    "object-contain rounded-lg p-2",
+                    activeFilter === 'grayscale' && 'grayscale',
+                    activeFilter === 'sepia' && 'sepia'
+                )} 
+            />
         ) : (
           children || (
             <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
@@ -276,6 +342,7 @@ export default function ImageCloak() {
 
   return (
     <div className="w-full">
+      <canvas ref={canvasRef} className="hidden"></canvas>
       <div className="text-center mb-12">
         <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Try ImageCloak</h2>
         <p className="max-w-2xl mx-auto mt-2 text-muted-foreground">Embed or extract data in two simple steps.</p>
@@ -299,50 +366,68 @@ export default function ImageCloak() {
             <CardContent>
               <form onSubmit={handleEncode} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                  <div className="space-y-2">
-                    <Label>1. Carrier Image</Label>
-                    <Tabs value={carrierSource} onValueChange={(value) => setCarrierSource(value as CarrierSource)} className="w-full">
-                      <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="upload">
-                          <UploadCloud className="mr-2 h-4 w-4" /> Upload
-                        </TabsTrigger>
-                        <TabsTrigger value="random">
-                          <Wand2 className="mr-2 h-4 w-4" /> Random
-                        </TabsTrigger>
-                      </TabsList>
-                      <TabsContent value="upload" className="mt-4">
-                        <FileDropzone 
-                          id="carrier-image" 
-                          onFileChange={(e) => handleFileChange(e, 'carrier')} 
-                          onDrop={(e) => handleDrop(e, 'carrier')}
-                          onDragOver={handleDragOver}
-                          preview={carrierPreview}
-                          onClear={() => onClear('carrier')}
-                        />
-                      </TabsContent>
-                      <TabsContent value="random" className="mt-4">
-                        <div className="space-y-4">
-                            <Button type="button" className="w-full" disabled={isGenerating} onClick={handleGenerateRandomImage}>
-                              {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                              Generate Random Image
-                            </Button>
+                  
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                        <Label>1. Carrier Image</Label>
+                        <Tabs value={carrierSource} onValueChange={(value) => setCarrierSource(value as CarrierSource)} className="w-full">
+                          <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="upload">
+                              <UploadCloud className="mr-2 h-4 w-4" /> Upload
+                            </TabsTrigger>
+                            <TabsTrigger value="random">
+                              <Wand2 className="mr-2 h-4 w-4" /> Random
+                            </TabsTrigger>
+                          </TabsList>
+                          <TabsContent value="upload" className="mt-4">
                             <FileDropzone 
+                              id="carrier-image" 
+                              onFileChange={(e) => handleFileChange(e, 'carrier')} 
                               onDrop={(e) => handleDrop(e, 'carrier')}
                               onDragOver={handleDragOver}
                               preview={carrierPreview}
-                              onClear={() => onClear('carrier')}>
-                                <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
-                                  <Wand2 className="w-10 h-10 mb-4 text-primary" />
-                                  <p className="mb-2 text-sm text-foreground/80">Your generated image will appear here</p>
+                              onClear={() => onClear('carrier')}
+                            />
+                          </TabsContent>
+                          <TabsContent value="random" className="mt-4">
+                            <div className="space-y-4">
+                                <Button type="button" className="w-full" disabled={isGenerating} onClick={handleGenerateRandomImage}>
+                                  {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                                  Generate Random Image
+                                </Button>
+                                <FileDropzone 
+                                  onDrop={(e) => handleDrop(e, 'carrier')}
+                                  onDragOver={handleDragOver}
+                                  preview={carrierPreview}
+                                  onClear={() => onClear('carrier')}>
+                                    <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+                                      <Wand2 className="w-10 h-10 mb-4 text-primary" />
+                                      <p className="mb-2 text-sm text-foreground/80">Your generated image will appear here</p>
+                                    </div>
+                                </FileDropzone>
+                            </div>
+                          </TabsContent>
+                        </Tabs>
+                    </div>
+                    {carrierPreview && (
+                        <div className="space-y-2 animate-in fade-in">
+                          <Label>2. Filters</Label>
+                           <div className="flex items-center gap-2">
+                                <Palette className="h-5 w-5 text-muted-foreground" />
+                                <div className="flex gap-2">
+                                    <Button type="button" variant={activeFilter === 'original' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleFilterChange('original')}>Original</Button>
+                                    <Button type="button" variant={activeFilter === 'grayscale' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleFilterChange('grayscale')}>Grayscale</Button>
+                                    <Button type="button" variant={activeFilter === 'sepia' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleFilterChange('sepia')}>Sepia</Button>
                                 </div>
-                            </FileDropzone>
+                           </div>
                         </div>
-                      </TabsContent>
-                    </Tabs>
+                    )}
                   </div>
+
+
                   <div className="space-y-4 flex flex-col">
                     <div className="space-y-2">
-                      <Label>2. Data to Hide</Label>
+                      <Label>3. Data to Hide</Label>
                       <RadioGroup value={dataType} onValueChange={(value: DataType) => setDataType(value)} className="flex space-x-4">
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="text" id="r1" />
@@ -374,7 +459,7 @@ export default function ImageCloak() {
                     )}
 
                     <div className="space-y-2">
-                      <Label htmlFor="encode-password">3. Password</Label>
+                      <Label htmlFor="encode-password">4. Password</Label>
                       <div className="relative">
                         <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input id="encode-password" type="text" placeholder="Your secret key" className="pl-10 pr-24" value={encodePassword} onChange={(e) => setEncodePassword(e.target.value)} />
