@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw, Palette, Type, Upload, Settings, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw, Palette, Type, Upload, Settings, ChevronDown, CheckCircle2, View } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from '@/firebase';
@@ -300,29 +300,26 @@ export default function ImageCloak() {
     if(encodedImage) URL.revokeObjectURL(encodedImage);
     setEncodedImage(null);
     
-     const addLog: (message: string, status?: EncodingLog['status']) => void = (message, status = 'pending') => {
-        setEncodingLogs(prev => {
-            const newLogs = [...prev];
-            // If we get a 'complete' or 'error' status, all previous 'pending' logs should be marked 'complete'.
-            if (status === 'complete' || status === 'error') {
-                newLogs.forEach(log => {
-                    if (log.status === 'pending') {
-                        log.status = 'complete';
-                    }
-                });
-            } else {
-                // If a new 'pending' log arrives, mark the *previous* one as 'complete'.
-                if (newLogs.length > 0) {
-                    const lastLog = newLogs[newLogs.length - 1];
-                    if (lastLog.status === 'pending') {
-                        lastLog.status = 'complete';
-                    }
-                }
-            }
-            newLogs.push({ message, status });
-            return newLogs;
-        });
-    };
+    const addLog: (message: string, status?: EncodingLog['status']) => void = (message, status = 'pending') => {
+      setEncodingLogs(prev => {
+          const newLogs = [...prev];
+          const lastLog = newLogs[newLogs.length - 1];
+
+          // If the new message is about success or error, all previous 'pending' become 'complete'
+          if ((status === 'complete' || status === 'error') && lastLog) {
+              newLogs.forEach(log => {
+                  if (log.status === 'pending') {
+                      log.status = 'complete';
+                  }
+              });
+          } else if (lastLog && lastLog.status === 'pending') {
+              lastLog.status = 'complete';
+          }
+          
+          newLogs.push({ message, status });
+          return newLogs;
+      });
+  };
 
     try {
         await saveEncodedImage(firestore, user.uid, {
@@ -389,7 +386,7 @@ export default function ImageCloak() {
           const url = URL.createObjectURL(secretFile);
           setDecodedFileUrl(url);
 
-          if (secretFile.type === 'text/plain') {
+          if (secretFile.type.startsWith('text/')) {
             const reader = new FileReader();
             reader.onload = (event) => {
               setDecodedData({ type: 'file', content: secretFile, textContent: event.target?.result as string });
@@ -439,6 +436,13 @@ export default function ImageCloak() {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
+  
+  const isFileViewable = (file: File | null): boolean => {
+    if (!file) return false;
+    const viewableTypes = ['application/pdf', 'image/', 'text/'];
+    return viewableTypes.some(type => file.type.startsWith(type));
+  };
+
 
   return (
     <div className="w-full">
@@ -750,13 +754,20 @@ export default function ImageCloak() {
                             ) : (
                                 <p>File: {decodedData.content.name} ({formatFileSize(decodedData.content.size)})</p>
                             )}
-
-                             <Button asChild variant="secondary" size="sm" className="mt-2">
-                                <a href={decodedFileUrl!} download={decodedData.content.name}>
-                                  <Download className="mr-2 h-4 w-4" />
-                                  Download File
-                                </a>
-                              </Button>
+                            <div className="flex gap-2 mt-2">
+                                <Button asChild variant="secondary" size="sm">
+                                    <a href={decodedFileUrl!} download={decodedData.content.name}>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Download File
+                                    </a>
+                                </Button>
+                                <Button asChild variant="outline" size="sm" disabled={!isFileViewable(decodedData.content)}>
+                                    <a href={decodedFileUrl!} target="_blank" rel="noopener noreferrer">
+                                        <View className="mr-2 h-4 w-4" />
+                                        View File
+                                    </a>
+                                </Button>
+                            </div>
                            </div>
                         )}
                       </AlertDescription>
