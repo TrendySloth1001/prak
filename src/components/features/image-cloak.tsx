@@ -133,8 +133,8 @@ export default function ImageCloak() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'carrier' | 'source' | 'secret') => {
     const file = e.target.files?.[0];
     if (file) {
-      const newPreviewUrl = URL.createObjectURL(file);
       if (type === 'carrier') {
+        const newPreviewUrl = URL.createObjectURL(file);
         if(carrierPreview) URL.revokeObjectURL(carrierPreview);
         setCarrierImage(file);
         setCarrierPreview(newPreviewUrl);
@@ -144,6 +144,7 @@ export default function ImageCloak() {
         setCarrierSource('upload');
         setActiveFilter('original');
       } else if (type === 'source') {
+        const newPreviewUrl = URL.createObjectURL(file);
         if(sourcePreview) URL.revokeObjectURL(sourcePreview);
         setSourceImage(file);
         setSourcePreview(newPreviewUrl);
@@ -160,8 +161,8 @@ export default function ImageCloak() {
     e.stopPropagation();
     const file = e.dataTransfer.files?.[0];
     if (file && file.type.startsWith('image/')) {
-       const newPreviewUrl = URL.createObjectURL(file);
        if (type === 'carrier') {
+        const newPreviewUrl = URL.createObjectURL(file);
         if(carrierPreview) URL.revokeObjectURL(carrierPreview);
         setCarrierImage(file);
         setCarrierPreview(newPreviewUrl);
@@ -171,6 +172,7 @@ export default function ImageCloak() {
         setCarrierSource('upload');
         setActiveFilter('original');
       } else if (type === 'source') {
+        const newPreviewUrl = URL.createObjectURL(file);
         if(sourcePreview) URL.revokeObjectURL(sourcePreview);
         setSourceImage(file);
         setSourcePreview(newPreviewUrl);
@@ -210,12 +212,16 @@ export default function ImageCloak() {
     if(encodedImage) URL.revokeObjectURL(encodedImage);
     setEncodedImage(null);
 
+    // This is a simplified simulation. A real steganography implementation would
+    // manipulate the pixels of the carrier image to hide the secret data.
+    // For this prototype, we'll just "pretend" the data is encoded and save
+    // the original carrier image to the user's profile.
     try {
         const encodedImageFile = carrierImage;
 
         await saveEncodedImage(firestore, user.uid, {
             carrierImageDescription: carrierDescription,
-            encryptionKey: encodePassword,
+            encryptionKey: encodePassword, // In a real app, you would not save the raw password.
         }, encodedImageFile);
 
         const newEncodedImageUrl = URL.createObjectURL(encodedImageFile);
@@ -597,3 +603,5 @@ export default function ImageCloak() {
     </div>
   );
 }
+
+    
