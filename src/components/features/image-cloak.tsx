@@ -10,15 +10,27 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, File, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X } from 'lucide-react';
+import { UploadCloud, File, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Sparkles, Wand2 } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
+import { useUser } from '@/firebase';
+import { generateImage, GenerateImageOutput } from '@/ai/flows/generate-image-flow';
+import { signInWithGoogle } from '@/firebase/auth/auth-helpers';
 
 type DataType = 'text' | 'file';
 type DecodedDataType = { type: 'text'; content: string } | { type: 'file'; content: File };
+type CarrierSource = 'upload' | 'ai';
+
+const promptSuggestions = [
+  "A majestic lion in a field of stars",
+  "A futuristic cityscape at sunset",
+  "A secret agent cat in a tuxedo",
+  "A tranquil forest with a hidden waterfall"
+];
 
 export default function ImageCloak() {
   const { toast } = useToast();
+  const { user } = useUser();
 
   const [carrierImage, setCarrierImage] = useState<File | null>(null);
   const [carrierPreview, setCarrierPreview] = useState<string | null>(null);
@@ -37,6 +49,10 @@ export default function ImageCloak() {
   const [decodeError, setDecodeError] = useState<string | null>(null);
   const [decodedFileUrl, setDecodedFileUrl] = useState<string | null>(null);
 
+  const [carrierSource, setCarrierSource] = useState<CarrierSource>('upload');
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+
   useEffect(() => {
     return () => {
       if (carrierPreview) URL.revokeObjectURL(carrierPreview);
@@ -45,6 +61,37 @@ export default function ImageCloak() {
       if (decodedFileUrl) URL.revokeObjectURL(decodedFileUrl);
     };
   }, [carrierPreview, sourcePreview, encodedImage, decodedFileUrl]);
+  
+  const dataURLtoFile = (dataurl: string, filename: string) => {
+    let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)?.[1],
+        bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+    while(n--){
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, {type:mime});
+  }
+
+  const handleGenerateImage = async () => {
+    if (!aiPrompt) {
+      toast({ variant: "destructive", title: "Prompt is empty", description: "Please enter a prompt to generate an image." });
+      return;
+    }
+    setIsGenerating(true);
+    if (carrierPreview) URL.revokeObjectURL(carrierPreview);
+    setCarrierImage(null);
+    setCarrierPreview(null);
+    try {
+      const result: GenerateImageOutput = await generateImage({ prompt: aiPrompt });
+      setCarrierPreview(result.imageUrl);
+      const file = dataURLtoFile(result.imageUrl, 'ai-generated-image.png');
+      setCarrierImage(file);
+
+    } catch (error) {
+      console.error(error);
+      toast({ variant: "destructive", title: "Image Generation Failed", description: "Could not generate image. Please try again." });
+    }
+    setIsGenerating(false);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'carrier' | 'source' | 'secret') => {
     const file = e.target.files?.[0];
@@ -56,6 +103,7 @@ export default function ImageCloak() {
         setCarrierPreview(newPreviewUrl);
         if(encodedImage) URL.revokeObjectURL(encodedImage);
         setEncodedImage(null);
+        setCarrierSource('upload');
       } else if (type === 'source') {
         if(sourcePreview) URL.revokeObjectURL(sourcePreview);
         setSourceImage(file);
@@ -80,6 +128,7 @@ export default function ImageCloak() {
         setCarrierPreview(newPreviewUrl);
         if(encodedImage) URL.revokeObjectURL(encodedImage);
         setEncodedImage(null);
+        setCarrierSource('upload');
       } else if (type === 'source') {
         if(sourcePreview) URL.revokeObjectURL(sourcePreview);
         setSourceImage(file);
@@ -103,6 +152,10 @@ export default function ImageCloak() {
 
   const handleEncode = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      toast({ title: "Please sign in", description: "You must be signed in to encode images.", variant: "destructive", action: <Button onClick={signInWithGoogle}>Sign In</Button> });
+      return;
+    }
     if (!carrierImage || (dataType === 'text' && !secretText) || (dataType === 'file' && !secretFile) || !encodePassword) {
       toast({
         variant: "destructive",
@@ -119,8 +172,6 @@ export default function ImageCloak() {
     // Simulate encoding process
     setTimeout(() => {
       if (carrierImage) {
-        // In a real app, you would process the image and embed data here.
-        // For now, we just create a URL for the original image to simulate a result.
         const newEncodedImageUrl = URL.createObjectURL(carrierImage);
         setEncodedImage(newEncodedImageUrl);
       }
@@ -153,13 +204,11 @@ export default function ImageCloak() {
 
     // Simulate decoding process
     setTimeout(() => {
-      // This is where the logic fix is. We check the simulated password.
       if (decodePassword === encodePassword && encodePassword !== '') {
         if (dataType === 'text' && secretText) {
           setDecodedData({ type: 'text', content: secretText });
         } else if (dataType === 'file' && secretFile) {
           setDecodedData({ type: 'file', content: secretFile });
-          // This is the fix: create a downloadable URL for the file.
           const url = URL.createObjectURL(secretFile);
           setDecodedFileUrl(url);
         } else {
@@ -177,6 +226,7 @@ export default function ImageCloak() {
       if (carrierPreview) URL.revokeObjectURL(carrierPreview);
       setCarrierImage(null);
       setCarrierPreview(null);
+      setAiPrompt('');
     } else {
       if (sourcePreview) URL.revokeObjectURL(sourcePreview);
       setSourceImage(null);
@@ -184,7 +234,7 @@ export default function ImageCloak() {
     }
   }
 
-  const FileDropzone = ({ id, onFileChange, onDrop, onDragOver, preview, onClear }: { id: string, onFileChange: React.ChangeEventHandler<HTMLInputElement>, onDrop: React.DragEventHandler<HTMLLabelElement>, onDragOver: React.DragEventHandler<HTMLLabelElement>, preview: string | null, onClear: () => void }) => (
+  const FileDropzone = ({ id, onFileChange, onDrop, onDragOver, preview, onClear, children }: { id?: string, onFileChange?: React.ChangeEventHandler<HTMLInputElement>, onDrop: React.DragEventHandler<HTMLLabelElement>, onDragOver: React.DragEventHandler<HTMLLabelElement>, preview: string | null, onClear: () => void, children?: React.ReactNode }) => (
     <div className="relative">
       <Label
         htmlFor={id}
@@ -195,13 +245,15 @@ export default function ImageCloak() {
         {preview ? (
           <Image src={preview} alt="Image preview" fill className="object-contain rounded-lg p-2" />
         ) : (
-          <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
-            <UploadCloud className="w-10 h-10 mb-4 text-primary" />
-            <p className="mb-2 text-sm text-foreground/80"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-            <p className="text-xs text-muted-foreground">PNG, JPG, or GIF</p>
-          </div>
+          children || (
+            <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+              <UploadCloud className="w-10 h-10 mb-4 text-primary" />
+              <p className="mb-2 text-sm text-foreground/80"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+              <p className="text-xs text-muted-foreground">PNG, JPG, or GIF</p>
+            </div>
+          )
         )}
-        <Input id={id} type="file" accept="image/*" className="hidden" onChange={onFileChange} />
+        {id && <Input id={id} type="file" accept="image/*" className="hidden" onChange={onFileChange} />}
       </Label>
       {preview && (
         <Button variant="ghost" size="icon" className="absolute top-2 right-2 bg-background/50 hover:bg-background/80 rounded-full z-10" onClick={onClear}>
@@ -238,14 +290,61 @@ export default function ImageCloak() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                   <div className="space-y-2">
                     <Label>1. Carrier Image</Label>
-                    <FileDropzone 
-                      id="carrier-image" 
-                      onFileChange={(e) => handleFileChange(e, 'carrier')} 
-                      onDrop={(e) => handleDrop(e, 'carrier')}
-                      onDragOver={handleDragOver}
-                      preview={carrierPreview}
-                      onClear={() => onClear('carrier')}
-                    />
+                    <Tabs value={carrierSource} onValueChange={(value) => setCarrierSource(value as CarrierSource)} className="w-full">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="upload">
+                          <UploadCloud className="mr-2 h-4 w-4" /> Upload
+                        </TabsTrigger>
+                        <TabsTrigger value="ai" disabled={!user}>
+                          <Sparkles className="mr-2 h-4 w-4" /> Generate with AI
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="upload" className="mt-4">
+                        <FileDropzone 
+                          id="carrier-image" 
+                          onFileChange={(e) => handleFileChange(e, 'carrier')} 
+                          onDrop={(e) => handleDrop(e, 'carrier')}
+                          onDragOver={handleDragOver}
+                          preview={carrierPreview}
+                          onClear={() => onClear('carrier')}
+                        />
+                      </TabsContent>
+                      <TabsContent value="ai" className="mt-4">
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="ai-prompt">AI Image Prompt</Label>
+                              <Textarea id="ai-prompt" placeholder='e.g., "A photo of a cat astronaut on Mars"' value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} />
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {promptSuggestions.map(p => (
+                                <Button key={p} type="button" variant="outline" size="sm" onClick={() => setAiPrompt(p)}>{p}</Button>
+                              ))}
+                            </div>
+                            <Button type="button" className="w-full" disabled={isGenerating} onClick={handleGenerateImage}>
+                              {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                              Generate Image
+                            </Button>
+                            <FileDropzone 
+                              onDrop={(e) => handleDrop(e, 'carrier')}
+                              onDragOver={handleDragOver}
+                              preview={carrierPreview}
+                              onClear={() => onClear('carrier')}>
+                                <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+                                  <Sparkles className="w-10 h-10 mb-4 text-primary" />
+                                  <p className="mb-2 text-sm text-foreground/80">Your generated image will appear here</p>
+                                </div>
+                            </FileDropzone>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                    {!user && carrierSource === 'ai' && (
+                        <Alert className="mt-2">
+                          <AlertDescription className="flex items-center justify-between">
+                            Please sign in to use AI generation.
+                            <Button variant="link" className="p-0 h-auto" onClick={signInWithGoogle}>Sign In</Button>
+                          </AlertDescription>
+                        </Alert>
+                    )}
                   </div>
                   <div className="space-y-4 flex flex-col">
                     <div className="space-y-2">
@@ -291,7 +390,7 @@ export default function ImageCloak() {
                 </div>
 
                 <div className="flex flex-col items-center gap-4 pt-4">
-                  <Button type="submit" disabled={isEncoding} className="w-full max-w-xs">
+                  <Button type="submit" disabled={isEncoding || !user} className="w-full max-w-xs">
                     {isEncoding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {isEncoding ? 'Embedding Data...' : 'Generate Image'}
                   </Button>
