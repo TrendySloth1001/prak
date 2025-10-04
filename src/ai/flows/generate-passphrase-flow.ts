@@ -22,6 +22,7 @@ const generatePassphrasePrompt = ai.definePrompt({
     prompt: `You are an expert in creating secure, memorable passphrases.
 Generate a single passphrase that consists of 4 random, title-cased words separated by hyphens.
 The passphrase should be creative and uncommon. Do not include numbers or special characters.
+Your output must be only the passphrase string.
 
 Example: "Fuzzy-Lantern-Sleeps-Gently"
 `,
