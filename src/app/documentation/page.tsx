@@ -49,12 +49,12 @@ export default function DocumentationPage() {
                 </CardHeader>
                 <CardContent className="text-base space-y-2">
                     <ul className="list-disc pl-5 text-muted-foreground">
-                        <li><strong>Framework:</strong> Next.js (App Router)</li>
-                        <li><strong>Styling:</strong> Tailwind CSS</li>
-                        <li><strong>UI Components:</strong> shadcn/ui</li>
-                        <li><strong>Backend & Auth:</strong> Firebase (Authentication & Firestore)</li>
-                        <li><strong>AI Features:</strong> Google AI & Genkit</li>
-                        <li><strong>Deployment:</strong> Firebase App Hosting</li>
+                        <li><strong className="text-foreground">Framework:</strong> Next.js (App Router)</li>
+                        <li><strong className="text-foreground">Styling:</strong> Tailwind CSS</li>
+                        <li><strong className="text-foreground">UI Components:</strong> shadcn/ui</li>
+                        <li><strong className="text-foreground">Backend & Auth:</strong> Firebase (Authentication & Firestore)</li>
+                        <li><strong className="text-foreground">AI Features:</strong> Google AI & Genkit</li>
+                        <li><strong className="text-foreground">Deployment:</strong> Firebase App Hosting</li>
                     </ul>
                 </CardContent>
             </Card>
@@ -69,8 +69,8 @@ export default function DocumentationPage() {
                 <CardContent className="text-base space-y-2">
                      <ul className="list-disc pl-5 text-muted-foreground">
                         <li>Node.js (v18 or later recommended)</li>
-                        <li>`npm` (or another package manager like `yarn` or `pnpm`)</li>
-                        <li>A <Link href="https://console.firebase.google.com/" target='_blank' className='text-accent hover:underline'>Firebase Project</Link> with <strong>Authentication</strong> (Google provider enabled) and <strong>Firestore</strong> enabled.</li>
+                        <li><code className="font-mono bg-muted/50 p-1 rounded-sm text-foreground">npm</code> (or another package manager like <code className="font-mono bg-muted/50 p-1 rounded-sm text-foreground">yarn</code> or <code className="font-mono bg-muted/50 p-1 rounded-sm text-foreground">pnpm</code>)</li>
+                        <li>A <Link href="https://console.firebase.google.com/" target='_blank' className='text-accent hover:underline'>Firebase Project</Link> with <strong className="text-foreground">Authentication</strong> (Google provider enabled) and <strong className="text-foreground">Firestore</strong> enabled.</li>
                     </ul>
                 </CardContent>
             </Card>
@@ -85,16 +85,16 @@ export default function DocumentationPage() {
                 <CardContent className="text-base space-y-6">
                     <div>
                         <h4 className="font-bold text-lg mb-2 text-foreground">1. Install Dependencies</h4>
-                        <p className='text-muted-foreground mb-2'>First, navigate to the project directory and install the required `npm` packages.</p>
+                        <p className='text-muted-foreground mb-2'>First, navigate to the project directory and install the required <code className="font-mono bg-muted/50 p-1 rounded-sm text-foreground">npm</code> packages.</p>
                         <pre className="p-4 bg-gray-800 text-green-300 rounded-md text-sm font-mono overflow-x-auto">
                             <code>npm install</code>
                         </pre>
                     </div>
 
                     <div>
-                        <h4 className="font-bold text-lg mb-2 text-foreground">2. Set Up `.env` File</h4>
+                        <h4 className="font-bold text-lg mb-2 text-foreground">2. Set Up <code className="font-mono text-lg">.env</code> File</h4>
                         <p className="text-muted-foreground mb-4">
-                            You'll need to connect the app to a Firebase project. Create a file named `.env` in the project root and copy the example below.
+                            You'll need to connect the app to a Firebase project. Create a file named <code className="font-mono bg-muted/50 p-1 rounded-sm text-foreground">.env</code> in the project root and copy the example below.
                         </p>
                         <pre className="p-4 bg-gray-800 text-gray-300 rounded-md text-sm font-mono overflow-x-auto">
 {`# Firebase Project Configuration
@@ -114,11 +114,11 @@ NEXT_PUBLIC_BUILDERS="NIKHIL KUMAWAT,Your Name"`}
                         <h4 className="font-bold text-lg mb-2 text-foreground">3. Get Firebase Credentials</h4>
                         <ol className="list-decimal pl-6 text-muted-foreground space-y-2">
                            <li>Go to the <Link href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-semibold">Firebase Console</Link>.</li>
-                           <li>Click on **"Add project"** or select an existing project.</li>
-                           <li>Once your project is open, navigate to **Project Settings** by clicking the gear icon <code className="bg-muted/50 text-foreground p-1 rounded-sm">⚙️</code> next to "Project Overview".</li>
-                           <li>In the "Your apps" card, click on the **Web icon** (<code className="bg-muted/50 text-foreground p-1 rounded-sm">&lt;/&gt;</code>) to register a new web app.</li>
-                           <li>Give your app a nickname (e.g., "ImageCloak App") and click **"Register app"**. You can skip the "Add Firebase SDK" step.</li>
-                           <li>After registration, you will be taken back to the Project Settings page. In the "Your apps" card, find the **SDK setup and configuration** section and select **"Config"**.</li>
+                           <li>Click on <strong className="text-foreground">"Add project"</strong> or select an existing project.</li>
+                           <li>Once your project is open, navigate to <strong className="text-foreground">Project Settings</strong> by clicking the gear icon <code className="bg-muted/50 text-foreground p-1 rounded-sm">⚙️</code> next to "Project Overview".</li>
+                           <li>In the "Your apps" card, click on the <strong className="text-foreground">Web icon</strong> (<code className="bg-muted/50 text-foreground p-1 rounded-sm">&lt;/&gt;</code>) to register a new web app.</li>
+                           <li>Give your app a nickname (e.g., "ImageCloak App") and click <strong className="text-foreground">"Register app"</strong>. You can skip the "Add Firebase SDK" step.</li>
+                           <li>After registration, you will be taken back to the Project Settings page. In the "Your apps" card, find the <strong className="text-foreground">SDK setup and configuration</strong> section and select <strong className="text-foreground">"Config"</strong>.</li>
                            <li>You will see a <code className="bg-muted/50 text-foreground p-1 rounded-sm">firebaseConfig</code> object. This contains all the credentials you need. Copy the values from this object into your <code className="bg-muted/50 text-foreground p-1 rounded-sm">.env</code> file.
                             <ul className="list-disc pl-6 mt-4 space-y-2">
                                 <li>Copy the <code className="bg-muted/50 text-foreground p-1 rounded-sm">apiKey</code> value and paste it into <code className="bg-muted/50 text-foreground p-1 rounded-sm">NEXT_PUBLIC_FIREBASE_API_KEY</code>.</li>
