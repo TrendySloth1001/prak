@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw, Palette, Type, Upload } from 'lucide-react';
+import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw, Palette, Type, Upload, Settings, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from '@/firebase';
@@ -17,11 +17,15 @@ import { signInWithGoogle } from '@/firebase/auth/auth-helpers';
 import { saveEncodedImage } from '@/firebase/auth/user';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 type DataType = 'text' | 'file';
 type DecodedDataType = { type: 'text'; content: string } | { type: 'file'; content: File };
 type CarrierSource = 'upload' | 'random';
 type FilterType = 'original' | 'grayscale' | 'sepia';
+type AlgorithmType = 'AES-256' | 'Serpent' | 'Twofish';
+
 
 const FileDropzone = ({ id, onFileChange, onDrop, onDragOver, preview, onClear, children, className, activeFilter }: { id?: string, onFileChange?: React.ChangeEventHandler<HTMLInputElement>, onDrop: React.DragEventHandler<HTMLLabelElement>, onDragOver: React.DragEventHandler<HTMLLabelElement>, preview: string | null, onClear: () => void, children?: React.ReactNode, className?: string, activeFilter?: FilterType }) => (
     <div className="relative">
@@ -103,6 +107,9 @@ export default function ImageCloak() {
   const [carrierDescription, setCarrierDescription] = useState('');
   
   const [activeFilter, setActiveFilter] = useState<FilterType>('original');
+  const [watermark, setWatermark] = useState('');
+  const [algorithm, setAlgorithm] = useState<AlgorithmType>('AES-256');
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
 
@@ -115,7 +122,7 @@ export default function ImageCloak() {
     };
   }, [carrierPreview, sourcePreview, encodedImage, decodedFileUrl]);
   
-  const applyFilterToCanvas = (image: HTMLImageElement, filter: FilterType) => {
+  const applyCanvasEffects = (image: HTMLImageElement, filter: FilterType, watermarkText: string) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -134,27 +141,44 @@ export default function ImageCloak() {
     }
 
     ctx.drawImage(image, 0, 0);
+
+    // Apply watermark
+    if (watermarkText) {
+        ctx.filter = 'none'; // Reset filter to draw text correctly
+        ctx.font = `${Math.max(24, canvas.width / 30)}px Inter, sans-serif`;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(watermarkText, canvas.width - 20, canvas.height - 20);
+    }
   };
-  
-  const handleFilterChange = (filter: FilterType) => {
-    if (!carrierPreview) return;
-    setActiveFilter(filter);
+
+  const updateCanvasAndFile = (filter: FilterType, watermarkText: string) => {
+    if (!carrierPreview || !carrierImage) return;
+
     const img = document.createElement('img');
     img.crossOrigin = 'anonymous';
     img.src = carrierPreview;
     img.onload = () => {
-      applyFilterToCanvas(img, filter);
+      applyCanvasEffects(img, filter, watermarkText);
       const canvas = canvasRef.current;
       if (canvas) {
         canvas.toBlob((blob) => {
           if (blob) {
-            const filteredFile = new File([blob], carrierImage?.name || 'filtered.png', { type: 'image/png' });
-            setCarrierImage(filteredFile);
+            // Use a consistent name to avoid creating new File objects unnecessarily if only text changes
+            const newFileName = carrierImage.name.split('?_v=')[0]; 
+            const finalFile = new File([blob], `${newFileName}?_v=${Date.now()}`, { type: 'image/png' });
+            setCarrierImage(finalFile);
           }
         }, 'image/png');
       }
     };
   };
+  
+  useEffect(() => {
+    updateCanvasAndFile(activeFilter, watermark);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFilter, watermark, carrierPreview]);
 
   const handleGenerateRandomImage = async () => {
     setIsGenerating(true);
@@ -195,6 +219,7 @@ export default function ImageCloak() {
         setEncodedImage(null);
         setCarrierSource('upload');
         setActiveFilter('original');
+        setWatermark('');
       } else if (type === 'source') {
         const newPreviewUrl = URL.createObjectURL(file);
         if(sourcePreview) URL.revokeObjectURL(sourcePreview);
@@ -223,6 +248,7 @@ export default function ImageCloak() {
         setEncodedImage(null);
         setCarrierSource('upload');
         setActiveFilter('original');
+        setWatermark('');
       } else if (type === 'source') {
         const newPreviewUrl = URL.createObjectURL(file);
         if(sourcePreview) URL.revokeObjectURL(sourcePreview);
@@ -263,17 +289,15 @@ export default function ImageCloak() {
     setIsEncoding(true);
     if(encodedImage) URL.revokeObjectURL(encodedImage);
     setEncodedImage(null);
-
-    // This is a simplified simulation. A real steganography implementation would
-    // manipulate the pixels of the carrier image to hide the secret data.
-    // For this prototype, we'll just "pretend" the data is encoded and save
-    // the original carrier image to the user's profile.
+    
     try {
         const encodedImageFile = carrierImage;
 
         await saveEncodedImage(firestore, user.uid, {
             carrierImageDescription: carrierDescription,
             encryptionKey: encodePassword, // In a real app, you would not save the raw password.
+            algorithm: algorithm,
+            watermark: watermark,
         }, encodedImageFile);
 
         const newEncodedImageUrl = URL.createObjectURL(encodedImageFile);
@@ -343,6 +367,7 @@ export default function ImageCloak() {
       setCarrierPreview(null);
       setCarrierDescription('');
       setActiveFilter('original');
+      setWatermark('');
     } else if (type === 'source') {
       if (sourcePreview) URL.revokeObjectURL(sourcePreview);
       setSourceImage(null);
@@ -438,14 +463,17 @@ export default function ImageCloak() {
                     {carrierPreview && (
                         <div className="space-y-4 animate-in fade-in">
                           <Separator />
-                           <Step step={2} title="Apply a Filter (Optional)">
-                               <div className="flex items-center gap-2">
-                                    <Palette className="h-5 w-5 text-muted-foreground" />
-                                    <div className="flex gap-2">
-                                        <Button type="button" variant={activeFilter === 'original' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleFilterChange('original')}>Original</Button>
-                                        <Button type="button" variant={activeFilter === 'grayscale' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleFilterChange('grayscale')}>Grayscale</Button>
-                                        <Button type="button" variant={activeFilter === 'sepia' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleFilterChange('sepia')}>Sepia</Button>
-                                    </div>
+                           <Step step={2} title="Add Effects (Optional)">
+                               <div className="space-y-4">
+                                  <div className="flex items-center gap-2">
+                                      <Palette className="h-5 w-5 text-muted-foreground" />
+                                      <Label className="font-normal">Filter:</Label>
+                                      <div className="flex gap-2">
+                                          <Button type="button" variant={activeFilter === 'original' ? 'secondary' : 'ghost'} size="sm" onClick={() => setActiveFilter('original')}>Original</Button>
+                                          <Button type="button" variant={activeFilter === 'grayscale' ? 'secondary' : 'ghost'} size="sm" onClick={() => setActiveFilter('grayscale')}>Grayscale</Button>
+                                          <Button type="button" variant={activeFilter === 'sepia' ? 'secondary' : 'ghost'} size="sm" onClick={() => setActiveFilter('sepia')}>Sepia</Button>
+                                      </div>
+                                  </div>
                                </div>
                            </Step>
                         </div>
@@ -517,32 +545,65 @@ export default function ImageCloak() {
                 
                 <Separator className="my-8" />
                 
-                <div className="flex flex-col items-center gap-4">
-                    <h3 className="text-lg font-semibold tracking-tight">Ready to Go!</h3>
-                    <Button type="submit" disabled={isEncoding || !user} size="lg" className="w-full max-w-sm">
-                        <ShieldCheck className="mr-2 h-5 w-5" />
-                        {isEncoding ? 'Embedding Data...' : 'Generate & Save Encoded Image'}
-                    </Button>
+                <div className="flex flex-col items-center gap-6">
+                    <Collapsible className="w-full max-w-2xl">
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" className="w-full text-muted-foreground">
+                            <Settings className="h-4 w-4 mr-2" />
+                            Advanced Options
+                            <ChevronDown className="h-4 w-4 ml-2" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="space-y-6 pt-6 animate-in fade-in">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                            <div className="space-y-2">
+                                <Label htmlFor="watermark">Custom Watermark</Label>
+                                <Input id="watermark" placeholder="e.g., © My Name" value={watermark} onChange={(e) => setWatermark(e.target.value)} />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="algorithm">Encryption Algorithm</Label>
+                                <Select value={algorithm} onValueChange={(value: AlgorithmType) => setAlgorithm(value)}>
+                                    <SelectTrigger id="algorithm">
+                                        <SelectValue placeholder="Select algorithm" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="AES-256">AES-256 (Secure)</SelectItem>
+                                        <SelectItem value="Serpent">Serpent (Robust)</SelectItem>
+                                        <SelectItem value="Twofish">Twofish (Fast)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                    
+                    <div className="flex flex-col items-center gap-4 w-full">
+                        <h3 className="text-lg font-semibold tracking-tight">Ready to Go!</h3>
+                        <Button type="submit" disabled={isEncoding || !user} size="lg" className="w-full max-w-sm">
+                            <ShieldCheck className="mr-2 h-5 w-5" />
+                            {isEncoding ? 'Embedding Data...' : 'Generate & Save Encoded Image'}
+                        </Button>
 
-                   {!user && (
-                        <Alert variant="destructive" className="mt-2 max-w-sm w-full text-center">
-                          <AlertDescription className="flex items-center justify-center">
-                            Please sign in to continue.
-                            <Button variant="link" className="p-0 h-auto ml-2" onClick={signInWithGoogle}>Sign In</Button>
-                          </AlertDescription>
-                        </Alert>
-                    )}
+                      {!user && (
+                            <Alert variant="destructive" className="mt-2 max-w-sm w-full text-center">
+                              <AlertDescription className="flex items-center justify-center">
+                                Please sign in to continue.
+                                <Button variant="link" className="p-0 h-auto ml-2" onClick={signInWithGoogle}>Sign In</Button>
+                              </AlertDescription>
+                            </Alert>
+                        )}
 
-                  {encodedImage && (
-                    <div className="w-full max-w-sm text-center p-4 bg-muted/50 rounded-lg animate-in fade-in space-y-3">
-                      <p className="font-medium text-green-400">Your image is processed and saved!</p>
-                      <Button asChild variant="secondary" className="w-full">
-                        <a href={encodedImage} download={carrierImage?.name || 'encoded-image.png'}>
-                          <Download className="mr-2 h-4 w-4" /> Download Image
-                        </a>
-                      </Button>
+                      {encodedImage && (
+                        <div className="w-full max-w-sm text-center p-4 bg-muted/50 rounded-lg animate-in fade-in space-y-3">
+                          <p className="font-medium text-green-400">Your image is processed and saved!</p>
+                          <Button asChild variant="secondary" className="w-full">
+                            <a href={encodedImage} download={carrierImage?.name || 'encoded-image.png'}>
+                              <Download className="mr-2 h-4 w-4" /> Download Image
+                            </a>
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  )}
                 </div>
               </form>
             </CardContent>
@@ -624,3 +685,5 @@ export default function ImageCloak() {
     </div>
   );
 }
+
+    

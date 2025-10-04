@@ -9,4 +9,8 @@ export type EncodedImage = {
     carrierImageStoragePath: string;
     encodingDateTime: Timestamp;
     encryptionKey: string; 
+    watermark?: string;
+    algorithm?: string;
 };
+
+    
