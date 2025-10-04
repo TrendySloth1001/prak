@@ -80,10 +80,10 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     const unsubscribe = onAuthStateChanged(
       auth,
       (firebaseUser) => { // Auth state determined
-        if (firebaseUser && firestore) {
-          // If the user is logged in, create or update their profile in Firestore.
-          upsertUserProfile(firestore, firebaseUser);
-        }
+        // if (firebaseUser && firestore) {
+        //   // If the user is logged in, create or update their profile in Firestore.
+        //   upsertUserProfile(firestore, firebaseUser);
+        // }
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
       (error) => { // Auth listener error
