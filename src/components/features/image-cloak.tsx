@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -21,7 +22,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/colla
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 type DataType = 'text' | 'file';
-type DecodedDataType = { type: 'text'; content: string } | { type: 'file'; content: File };
+type DecodedDataType = { type: 'text'; content: string } | { type: 'file'; content: File, textContent: string | null };
 type CarrierSource = 'upload' | 'random';
 type FilterType = 'original' | 'grayscale' | 'sepia';
 type AlgorithmType = 'AES-256' | 'Serpent' | 'Twofish';
@@ -345,11 +346,21 @@ export default function ImageCloak() {
       // the key used during the (simulated) encoding.
       if (decodePassword === encodePassword && encodePassword !== '') {
         if (dataType === 'text' && secretText) {
-          setDecodedData({ type: 'text', content: secretText });
+          setDecodedData({ type: 'text', content: secretText, textContent: null });
         } else if (dataType === 'file' && secretFile) {
           const url = URL.createObjectURL(secretFile);
-          setDecodedData({ type: 'file', content: secretFile });
           setDecodedFileUrl(url);
+
+          if (secretFile.type === 'text/plain') {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              setDecodedData({ type: 'file', content: secretFile, textContent: event.target?.result as string });
+            };
+            reader.readAsText(secretFile);
+          } else {
+             setDecodedData({ type: 'file', content: secretFile, textContent: null });
+          }
+
         } else {
             setDecodeError('No data was originally encoded in this session, or the original data is missing.');
         }
@@ -646,23 +657,42 @@ export default function ImageCloak() {
                 </div>
                 
                 <div className="pt-4 min-h-[110px]">
-                  {decodedData && (
+                   {decodedData && (
                     <Alert variant="default" className="bg-green-100 dark:bg-green-900/50 border-green-300 dark:border-green-700 animate-in fade-in">
                       <ShieldCheck className="h-4 w-4 !text-green-600 dark:!text-green-400" />
                       <AlertTitle className="text-green-800 dark:text-green-300">Data Extracted Successfully</AlertTitle>
                       <AlertDescription>
                         {decodedData.type === 'text' && (
-                          <p className="text-green-700 dark:text-green-400 font-mono text-sm break-words">
-                            {decodedData.content}
-                          </p>
+                          <Textarea
+                            value={decodedData.content}
+                            readOnly={false} // Make it editable
+                            onChange={(e) => setDecodedData({...decodedData, content: e.target.value})}
+                            className="mt-2 font-mono bg-background/50"
+                            rows={5}
+                          />
                         )}
-                        {decodedData.type === 'file' && decodedFileUrl && (
-                          <Button asChild variant="secondary" size="sm" className="mt-2">
-                            <a href={decodedFileUrl} download={decodedData.content.name}>
-                              <Download className="mr-2 h-4 w-4" />
-                              Download {decodedData.content.name}
-                            </a>
-                          </Button>
+                        {decodedData.type === 'file' && (
+                           <div className="mt-2 space-y-4">
+                            {decodedData.textContent ? (
+                                <>
+                                 <p className="font-semibold text-sm">File: {decodedData.content.name}</p>
+                                 <Textarea
+                                    value={decodedData.textContent}
+                                    readOnly
+                                    className="font-mono bg-background/50 h-48"
+                                  />
+                                </>
+                            ) : (
+                                <p>File: {decodedData.content.name} ({formatFileSize(decodedData.content.size)})</p>
+                            )}
+
+                             <Button asChild variant="secondary" size="sm" className="mt-2">
+                                <a href={decodedFileUrl!} download={decodedData.content.name}>
+                                  <Download className="mr-2 h-4 w-4" />
+                                  Download File
+                                </a>
+                              </Button>
+                           </div>
                         )}
                       </AlertDescription>
                     </Alert>
@@ -685,5 +715,3 @@ export default function ImageCloak() {
     </div>
   );
 }
-
-    
