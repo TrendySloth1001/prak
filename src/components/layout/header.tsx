@@ -1,6 +1,6 @@
 
 'use client';
-import { LockKeyhole, LogOut, User as UserIcon } from 'lucide-react';
+import { LockKeyhole, LogOut, User as UserIcon, BookOpen } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { getAuth, signOut } from 'firebase/auth';
@@ -74,10 +74,18 @@ export default function Header() {
   return (
     <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-40">
       <div className="container mx-auto px-4 h-16 flex items-center">
-        <div className="flex items-center gap-3">
+        <Link href="/" className="flex items-center gap-3">
           <LockKeyhole className="w-7 h-7 text-accent" />
           <h1 className="text-2xl font-bold text-foreground tracking-tight">ImageCloak</h1>
-        </div>
+        </Link>
+        <nav className="ml-6 hidden md:flex items-center gap-4">
+            <Button variant="link" asChild className="text-muted-foreground">
+                <Link href="/how-it-works">
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    How It Works
+                </Link>
+            </Button>
+        </nav>
         <div className="ml-auto">
           <UserProfile />
         </div>
