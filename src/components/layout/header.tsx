@@ -1,6 +1,6 @@
 
 'use client';
-import { LockKeyhole, LogOut, User as UserIcon, BookOpen } from 'lucide-react';
+import { LockKeyhole, LogOut, User as UserIcon, BookOpen, FileCode } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { getAuth, signOut } from 'firebase/auth';
@@ -83,6 +83,12 @@ export default function Header() {
                 <Link href="/how-it-works">
                     <BookOpen className="mr-2 h-4 w-4" />
                     How It Works
+                </Link>
+            </Button>
+             <Button variant="link" asChild className="text-muted-foreground">
+                <Link href="/documentation">
+                    <FileCode className="mr-2 h-4 w-4" />
+                    Docs
                 </Link>
             </Button>
         </nav>

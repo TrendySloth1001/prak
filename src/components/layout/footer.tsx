@@ -29,6 +29,7 @@ export function ClientFooter() {
         )}
         <nav className="flex gap-4">
             <Link href="/how-it-works" className="hover:text-foreground transition-colors">How It Works</Link>
+             <Link href="/documentation" className="hover:text-foreground transition-colors">Docs</Link>
         </nav>
       </div>
     </footer>
