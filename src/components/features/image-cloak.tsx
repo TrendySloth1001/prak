@@ -10,11 +10,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2 } from 'lucide-react';
+import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
-import { useUser } from '@/firebase';
+import { useFirebase } from '@/firebase';
 import { signInWithGoogle } from '@/firebase/auth/auth-helpers';
+import { saveEncodedImage } from '@/firebase/auth/user';
 
 type DataType = 'text' | 'file';
 type DecodedDataType = { type: 'text'; content: string } | { type: 'file'; content: File };
@@ -22,7 +23,7 @@ type CarrierSource = 'upload' | 'random';
 
 export default function ImageCloak() {
   const { toast } = useToast();
-  const { user } = useUser();
+  const { user, firestore } = useFirebase();
 
   const [carrierImage, setCarrierImage] = useState<File | null>(null);
   const [carrierPreview, setCarrierPreview] = useState<string | null>(null);
@@ -43,6 +44,8 @@ export default function ImageCloak() {
 
   const [carrierSource, setCarrierSource] = useState<CarrierSource>('upload');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [carrierDescription, setCarrierDescription] = useState('');
+
 
   useEffect(() => {
     return () => {
@@ -68,6 +71,7 @@ export default function ImageCloak() {
       const previewUrl = URL.createObjectURL(file);
       setCarrierPreview(previewUrl);
       setCarrierImage(file);
+      setCarrierDescription(`A random image from picsum.photos with seed ${randomSeed}`);
 
     } catch (error) {
       console.error(error);
@@ -84,6 +88,7 @@ export default function ImageCloak() {
         if(carrierPreview) URL.revokeObjectURL(carrierPreview);
         setCarrierImage(file);
         setCarrierPreview(newPreviewUrl);
+        setCarrierDescription(`Uploaded image: ${file.name}`);
         if(encodedImage) URL.revokeObjectURL(encodedImage);
         setEncodedImage(null);
         setCarrierSource('upload');
@@ -109,6 +114,7 @@ export default function ImageCloak() {
         if(carrierPreview) URL.revokeObjectURL(carrierPreview);
         setCarrierImage(file);
         setCarrierPreview(newPreviewUrl);
+        setCarrierDescription(`Dropped image: ${file.name}`);
         if(encodedImage) URL.revokeObjectURL(encodedImage);
         setEncodedImage(null);
         setCarrierSource('upload');
@@ -157,11 +163,20 @@ export default function ImageCloak() {
       if (carrierImage) {
         const newEncodedImageUrl = URL.createObjectURL(carrierImage);
         setEncodedImage(newEncodedImageUrl);
+        
+        // Save to Firestore
+        if (firestore && user) {
+          saveEncodedImage(firestore, user.uid, {
+            carrierImageDescription: carrierDescription,
+            carrierImagePreview: carrierPreview || '', // In a real app, upload to storage and save URL
+            encryptionKey: encodePassword, // For simplicity, storing password. In real app, store a key reference.
+          });
+        }
       }
       setIsEncoding(false);
       toast({
-        title: "Image Processed",
-        description: "Your data has been secretly embedded in the image.",
+        title: "Image Processed & Saved",
+        description: "Your data has been secretly embedded and saved to your profile.",
       })
     }, 2000);
   };
@@ -209,12 +224,18 @@ export default function ImageCloak() {
       if (carrierPreview) URL.revokeObjectURL(carrierPreview);
       setCarrierImage(null);
       setCarrierPreview(null);
+      setCarrierDescription('');
     } else {
       if (sourcePreview) URL.revokeObjectURL(sourcePreview);
       setSourceImage(null);
       setSourcePreview(null);
     }
   }
+
+  const handleGenerateKey = () => {
+    const key = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    setEncodePassword(key);
+  };
 
   const FileDropzone = ({ id, onFileChange, onDrop, onDragOver, preview, onClear, children }: { id?: string, onFileChange?: React.ChangeEventHandler<HTMLInputElement>, onDrop: React.DragEventHandler<HTMLLabelElement>, onDragOver: React.DragEventHandler<HTMLLabelElement>, preview: string | null, onClear: () => void, children?: React.ReactNode }) => (
     <div className="relative">
@@ -348,7 +369,11 @@ export default function ImageCloak() {
                       <Label htmlFor="encode-password">3. Password</Label>
                       <div className="relative">
                         <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="encode-password" type="password" placeholder="Your secret key" className="pl-10" value={encodePassword} onChange={(e) => setEncodePassword(e.target.value)} />
+                        <Input id="encode-password" type="text" placeholder="Your secret key" className="pl-10 pr-24" value={encodePassword} onChange={(e) => setEncodePassword(e.target.value)} />
+                         <Button type="button" variant="ghost" size="sm" className="absolute right-1 top-1/2 -translate-y-1/2" onClick={handleGenerateKey}>
+                           <RefreshCw className="mr-2 h-4 w-4" />
+                           Generate
+                         </Button>
                       </div>
                     </div>
                   </div>
@@ -357,7 +382,7 @@ export default function ImageCloak() {
                 <div className="flex flex-col items-center gap-4 pt-4">
                   <Button type="submit" disabled={isEncoding || !user} className="w-full max-w-xs">
                     {isEncoding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isEncoding ? 'Embedding Data...' : 'Generate Image'}
+                    {isEncoding ? 'Embedding Data...' : 'Generate & Save Image'}
                   </Button>
                    {!user && (
                         <Alert className="mt-2 max-w-xs w-full">

@@ -1,19 +1,93 @@
 
 'use client';
 
-import { FileQuestion } from "lucide-react";
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy } from 'firebase/firestore';
+import { FileQuestion, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
+import Image from 'next/image';
+import { Badge } from '../ui/badge';
+import { formatDistanceToNow } from 'date-fns';
+import type { EncodedImage } from '@/lib/types';
+import { Skeleton } from '../ui/skeleton';
 
-export default function EncodedImageGallery() {
-    // This is a placeholder component.
-    // In the future, we will fetch the user's encoded images from Firestore here.
+
+function EncodedImageCard({ image }: { image: EncodedImage }) {
+    const formattedDate = image.encodingDateTime ? formatDistanceToNow(image.encodingDateTime.toDate(), { addSuffix: true }) : 'a moment ago';
 
     return (
-        <div className="flex flex-col items-center justify-center text-center p-8 border-2 border-dashed rounded-lg h-64 bg-muted/50">
-            <FileQuestion className="h-16 w-16 text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No Images Yet</h3>
-            <p className="text-muted-foreground">
-                Once you encode an image, it will appear in your history here.
-            </p>
+        <Card className="flex flex-col">
+            <CardHeader>
+                <div className="aspect-video relative w-full bg-muted rounded-md">
+                   {image.carrierImagePreview ? (
+                        <Image src={image.carrierImagePreview} alt={image.carrierImageDescription} fill className="object-cover rounded-md" />
+                   ) : (
+                        <div className="flex items-center justify-center h-full">
+                            <ImageIcon className="h-10 w-10 text-muted-foreground" />
+                        </div>
+                   )}
+                </div>
+            </CardHeader>
+            <CardContent className="flex-grow">
+                <CardTitle className="text-lg leading-snug">{image.carrierImageDescription}</CardTitle>
+            </CardContent>
+            <CardFooter>
+                 <p className="text-xs text-muted-foreground">{formattedDate}</p>
+            </CardFooter>
+        </Card>
+    )
+}
+
+
+export default function EncodedImageGallery() {
+    const { user, firestore } = useFirebase();
+
+    const imagesQuery = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return query(
+            collection(firestore, `users/${user.uid}/encodedImages`),
+            orderBy('encodingDateTime', 'desc')
+        );
+    }, [user, firestore]);
+    
+    const { data: images, isLoading } = useCollection<EncodedImage>(imagesQuery);
+
+    if (isLoading) {
+        return (
+             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {[...Array(4)].map((_, i) => (
+                    <Card key={i}>
+                        <CardHeader>
+                             <Skeleton className="h-32 w-full" />
+                        </CardHeader>
+                        <CardContent>
+                             <Skeleton className="h-5 w-3/4 mb-2" />
+                             <Skeleton className="h-4 w-1/2" />
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+        )
+    }
+
+    if (!images || images.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center text-center p-8 border-2 border-dashed rounded-lg h-64 bg-muted/50">
+                <FileQuestion className="h-16 w-16 text-muted-foreground mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No Images Yet</h3>
+                <p className="text-muted-foreground">
+                    Once you encode an image, it will appear in your history here.
+                </p>
+            </div>
+        );
+    }
+
+
+    return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {images.map((image) => (
+                <EncodedImageCard key={image.id} image={image} />
+            ))}
         </div>
     );
 }
