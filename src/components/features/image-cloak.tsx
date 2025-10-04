@@ -22,7 +22,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/colla
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { analyzeImage, AnalyzeImageOutput } from '@/ai/flows/analyze-image-flow';
 import { Progress } from '@/components/ui/progress';
-import { generatePassphrase } from '@/ai/flows/generate-passphrase-flow';
 
 type DataType = 'text' | 'file';
 type DecodedDataType = { type: 'text'; content: string } | { type: 'file'; content: File, textContent: string | null };
@@ -122,9 +121,6 @@ export default function ImageCloak() {
   const [analysisResult, setAnalysisResult] = useState<AnalyzeImageOutput | null>(null);
   const [isAnalysisOnCooldown, setIsAnalysisOnCooldown] = useState(false);
   const [progress, setProgress] = useState(0);
-
-  const [isGeneratingKey, setIsGeneratingKey] = useState(false);
-
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -494,24 +490,9 @@ export default function ImageCloak() {
     }
   }
 
-  const handleGenerateKey = async () => {
-    setIsGeneratingKey(true);
-    try {
-        const passphrase = await generatePassphrase();
-        setEncodePassword(passphrase);
-    } catch (error) {
-        console.error("Failed to generate passphrase:", error);
-        toast({
-            variant: "destructive",
-            title: "Generation Failed",
-            description: "Could not generate a secure passphrase. Please try again.",
-        });
-        // Fallback to simple random string
-        const key = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-        setEncodePassword(key);
-    } finally {
-        setIsGeneratingKey(false);
-    }
+  const handleGenerateKey = () => {
+    const key = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    setEncodePassword(key);
   };
 
     const handleAnalyzeImage = async () => {
@@ -772,8 +753,8 @@ export default function ImageCloak() {
                       <div className="relative">
                         <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input id="encode-password" type="text" placeholder="Your secret key" className="pl-10" value={encodePassword} onChange={(e) => setEncodePassword(e.target.value)} />
-                         <Button type="button" variant="ghost" size="sm" className="absolute right-1 top-1/2 -translate-y-1/2 h-8" onClick={handleGenerateKey} disabled={isGeneratingKey}>
-                           {isGeneratingKey ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                         <Button type="button" variant="ghost" size="sm" className="absolute right-1 top-1/2 -translate-y-1/2 h-8" onClick={handleGenerateKey}>
+                           <RefreshCw className="mr-2 h-4 w-4" />
                            Generate
                          </Button>
                       </div>
@@ -968,10 +949,3 @@ export default function ImageCloak() {
     </div>
   );
 }
-
-    
-
-    
-
-    
-
