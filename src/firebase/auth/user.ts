@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -100,9 +99,7 @@ export async function saveEncodedImage(
             });
         }
         errorEmitter.emit('permission-error', permissionError);
-        // Re-throw the error if you want calling code to also handle it
+        // Re-throw the error so the calling component can handle the UI state.
         throw error;
     }
 }
-
-    
