@@ -10,13 +10,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw, Palette } from 'lucide-react';
+import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw, Palette, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from '@/firebase';
 import { signInWithGoogle } from '@/firebase/auth/auth-helpers';
 import { saveEncodedImage } from '@/firebase/auth/user';
 import { cn } from '@/lib/utils';
+import { Separator } from '../ui/separator';
 
 type DataType = 'text' | 'file';
 type DecodedDataType = { type: 'text'; content: string } | { type: 'file'; content: File };
@@ -210,8 +211,6 @@ export default function ImageCloak() {
     setEncodedImage(null);
 
     try {
-        // This is a simulation.
-        // A real steganography app would embed data into the image here.
         const encodedImageFile = carrierImage;
 
         await saveEncodedImage(firestore, user.uid, {
@@ -339,6 +338,18 @@ export default function ImageCloak() {
       )}
     </div>
   );
+  
+  const Step = ({ step, title, children }: { step: number; title: string; children: React.ReactNode }) => (
+    <div className="space-y-4">
+        <div className="flex items-center gap-4">
+            <div className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-primary text-primary-foreground font-bold">{step}</div>
+            <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
+        </div>
+        <div className="pl-12">
+            {children}
+        </div>
+    </div>
+  );
 
   return (
     <div className="w-full">
@@ -358,18 +369,18 @@ export default function ImageCloak() {
         </TabsList>
 
         <TabsContent value="encode">
-          <Card className="max-w-4xl mx-auto">
+          <Card className="max-w-6xl mx-auto">
             <CardHeader>
               <CardTitle>Embed Data into an Image</CardTitle>
               <CardDescription>Hide a secret message or a small file within an image. Only those with the password can retrieve it.</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleEncode} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+              <form onSubmit={handleEncode}>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                   
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                        <Label>1. Carrier Image</Label>
+                  {/* Left Column */}
+                  <div className="space-y-6">
+                     <Step step={1} title="Choose Carrier Image">
                         <Tabs value={carrierSource} onValueChange={(value) => setCarrierSource(value as CarrierSource)} className="w-full">
                           <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="upload">
@@ -389,45 +400,46 @@ export default function ImageCloak() {
                               onClear={() => onClear('carrier')}
                             />
                           </TabsContent>
-                          <TabsContent value="random" className="mt-4">
-                            <div className="space-y-4">
+                          <TabsContent value="random" className="mt-4 space-y-4">
                                 <Button type="button" className="w-full" disabled={isGenerating} onClick={handleGenerateRandomImage}>
-                                  {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                                  Generate Random Image
+                                  {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                                  Generate New Image
                                 </Button>
                                 <FileDropzone 
                                   onDrop={(e) => handleDrop(e, 'carrier')}
                                   onDragOver={handleDragOver}
                                   preview={carrierPreview}
                                   onClear={() => onClear('carrier')}>
-                                    <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+                                    <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4 h-full">
                                       <Wand2 className="w-10 h-10 mb-4 text-primary" />
                                       <p className="mb-2 text-sm text-foreground/80">Your generated image will appear here</p>
                                     </div>
                                 </FileDropzone>
-                            </div>
                           </TabsContent>
                         </Tabs>
-                    </div>
+                    </Step>
+                    
                     {carrierPreview && (
-                        <div className="space-y-2 animate-in fade-in">
-                          <Label>2. Filters</Label>
-                           <div className="flex items-center gap-2">
-                                <Palette className="h-5 w-5 text-muted-foreground" />
-                                <div className="flex gap-2">
-                                    <Button type="button" variant={activeFilter === 'original' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleFilterChange('original')}>Original</Button>
-                                    <Button type="button" variant={activeFilter === 'grayscale' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleFilterChange('grayscale')}>Grayscale</Button>
-                                    <Button type="button" variant={activeFilter === 'sepia' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleFilterChange('sepia')}>Sepia</Button>
-                                </div>
-                           </div>
+                        <div className="space-y-4 animate-in fade-in">
+                          <Separator />
+                           <Step step={2} title="Apply a Filter (Optional)">
+                               <div className="flex items-center gap-2">
+                                    <Palette className="h-5 w-5 text-muted-foreground" />
+                                    <div className="flex gap-2">
+                                        <Button type="button" variant={activeFilter === 'original' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleFilterChange('original')}>Original</Button>
+                                        <Button type="button" variant={activeFilter === 'grayscale' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleFilterChange('grayscale')}>Grayscale</Button>
+                                        <Button type="button" variant={activeFilter === 'sepia' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleFilterChange('sepia')}>Sepia</Button>
+                                    </div>
+                               </div>
+                           </Step>
                         </div>
                     )}
                   </div>
 
 
-                  <div className="space-y-4 flex flex-col">
-                    <div className="space-y-2">
-                      <Label>3. Data to Hide</Label>
+                  {/* Right Column */}
+                  <div className="space-y-6">
+                    <Step step={3} title="Provide Secret Data">
                       <RadioGroup value={dataType} onValueChange={(value: DataType) => setDataType(value)} className="flex space-x-4">
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="text" id="r1" />
@@ -438,57 +450,65 @@ export default function ImageCloak() {
                           <Label htmlFor="r2">File</Label>
                         </div>
                       </RadioGroup>
-                    </div>
                     
-                    {dataType === 'text' ? (
-                      <Textarea 
-                        placeholder="Enter your secret message here..." 
-                        value={secretText} 
-                        onChange={(e) => setSecretText(e.target.value)}
-                        rows={6}
-                        className="flex-grow"
-                      />
-                    ) : (
-                      <Label htmlFor="secret-file" className="flex items-center gap-2 rounded-md border border-input p-2.5 cursor-pointer hover:bg-muted/50">
-                        <FileIcon className="h-6 w-6 text-muted-foreground"/>
-                        <span className="flex-grow text-sm text-muted-foreground">
-                          {secretFile ? secretFile.name : 'Choose a file...'}
-                        </span>
-                        <Input id="secret-file" type="file" className="hidden" onChange={(e) => handleFileChange(e, 'secret')} />
-                      </Label>
-                    )}
+                      {dataType === 'text' ? (
+                        <Textarea 
+                          placeholder="Enter your secret message here..." 
+                          value={secretText} 
+                          onChange={(e) => setSecretText(e.target.value)}
+                          rows={8}
+                          className="flex-grow"
+                        />
+                      ) : (
+                        <Label htmlFor="secret-file" className="flex items-center gap-3 rounded-md border border-input p-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                          <FileIcon className="h-6 w-6 text-muted-foreground flex-shrink-0"/>
+                          <span className="flex-grow text-sm text-muted-foreground truncate">
+                            {secretFile ? secretFile.name : 'Choose a file...'}
+                          </span>
+                           <Button asChild variant="outline" size="sm" className="flex-shrink-0">
+                                <p>Browse</p>
+                           </Button>
+                          <Input id="secret-file" type="file" className="hidden" onChange={(e) => handleFileChange(e, 'secret')} />
+                        </Label>
+                      )}
+                    </Step>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="encode-password">4. Password</Label>
+                    <Separator />
+
+                    <Step step={4} title="Set a Password">
                       <div className="relative">
                         <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="encode-password" type="text" placeholder="Your secret key" className="pl-10 pr-24" value={encodePassword} onChange={(e) => setEncodePassword(e.target.value)} />
-                         <Button type="button" variant="ghost" size="sm" className="absolute right-1 top-1/2 -translate-y-1/2" onClick={handleGenerateKey}>
+                        <Input id="encode-password" type="text" placeholder="Your secret key" className="pl-10" value={encodePassword} onChange={(e) => setEncodePassword(e.target.value)} />
+                         <Button type="button" variant="ghost" size="sm" className="absolute right-1 top-1/2 -translate-y-1/2 h-8" onClick={handleGenerateKey}>
                            <RefreshCw className="mr-2 h-4 w-4" />
                            Generate
                          </Button>
                       </div>
-                    </div>
+                    </Step>
                   </div>
                 </div>
+                
+                <Separator className="my-8" />
+                
+                <div className="flex flex-col items-center gap-4">
+                    <h3 className="text-lg font-semibold tracking-tight">Ready to Go!</h3>
+                    <Button type="submit" disabled={isEncoding || !user} size="lg" className="w-full max-w-sm">
+                        <ShieldCheck className="mr-2 h-5 w-5" />
+                        {isEncoding ? 'Embedding Data...' : 'Generate & Save Encoded Image'}
+                    </Button>
 
-                <div className="flex flex-col items-center gap-4 pt-4">
-                  <Button type="submit" disabled={isEncoding || !user} className="w-full max-w-xs">
-                    {isEncoding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isEncoding ? 'Embedding Data...' : 'Generate & Save Image'}
-                  </Button>
                    {!user && (
-                        <Alert className="mt-2 max-w-xs w-full">
-                          <AlertDescription className="flex items-center justify-between">
-                            Please sign in to encode.
-                            <Button variant="link" className="p-0 h-auto" onClick={signInWithGoogle}>Sign In</Button>
+                        <Alert variant="destructive" className="mt-2 max-w-sm w-full text-center">
+                          <AlertDescription className="flex items-center justify-center">
+                            Please sign in to continue.
+                            <Button variant="link" className="p-0 h-auto ml-2" onClick={signInWithGoogle}>Sign In</Button>
                           </AlertDescription>
                         </Alert>
                     )}
 
                   {encodedImage && (
-                    <div className="w-full max-w-xs text-center p-4 bg-muted rounded-lg animate-in fade-in">
-                      <p className="text-sm font-medium mb-2">Your image is ready!</p>
+                    <div className="w-full max-w-sm text-center p-4 bg-muted/50 rounded-lg animate-in fade-in space-y-3">
+                      <p className="font-medium text-green-400">Your image is processed and saved!</p>
                       <Button asChild variant="secondary" className="w-full">
                         <a href={encodedImage} download={carrierImage?.name || 'encoded-image.png'}>
                           <Download className="mr-2 h-4 w-4" /> Download Image
