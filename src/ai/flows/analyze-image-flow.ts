@@ -11,12 +11,12 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
-export const AnalyzeImageInputSchema = z.object({
+const AnalyzeImageInputSchema = z.object({
   image: z.string().describe("A data URI of the image to be analyzed. Must include a MIME type and use Base64 encoding. Format: 'data:<mimetype>;base64,<encoded_data>'."),
 });
 export type AnalyzeImageInput = z.infer<typeof AnalyzeImageInputSchema>;
 
-export const AnalyzeImageOutputSchema = z.object({
+const AnalyzeImageOutputSchema = z.object({
   suitability: z.enum(['Low', 'Medium', 'High']).describe('The suitability of the image for steganography.'),
   reason: z.string().describe('A brief explanation for the suitability rating.'),
 });
