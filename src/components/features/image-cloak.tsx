@@ -15,7 +15,7 @@ import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from '@/firebase';
 import { signInWithGoogle } from '@/firebase/auth/auth-helpers';
-import { saveEncodedImage, upsertUserProfile } from '@/firebase/auth/user';
+import { saveEncodedImage } from '@/firebase/auth/user';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
@@ -501,7 +501,6 @@ export default function ImageCloak() {
 
   const getFilePreview = (file: File, fileUrl: string, textContent: string | null) => {
     const fileType = file.type;
-    const isViewable = fileType.startsWith('image/') || fileType === 'application/pdf' || textContent;
     
     if (fileType.startsWith('image/')) {
       return <Image src={fileUrl} alt="Decoded image preview" width={400} height={300} className="rounded-md object-contain mx-auto max-h-80" />;
@@ -800,7 +799,7 @@ export default function ImageCloak() {
                     <Alert variant="default" className="bg-green-100 dark:bg-green-900/50 border-green-300 dark:border-green-700 animate-in fade-in">
                       <ShieldCheck className="h-4 w-4 !text-green-600 dark:!text-green-400" />
                       <AlertTitle className="text-green-800 dark:text-green-300">Data Extracted Successfully</AlertTitle>
-                      <AlertDescription asChild>
+                      <AlertDescription>
                         <div className="space-y-4 mt-2">
                           {decodedData.type === 'text' && (
                             <Textarea
