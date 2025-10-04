@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -20,6 +21,7 @@ import { Separator } from '../ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { analyzeImage, AnalyzeImageOutput } from '@/ai/flows/analyze-image-flow';
+import { Progress } from '@/components/ui/progress';
 
 type DataType = 'text' | 'file';
 type DecodedDataType = { type: 'text'; content: string } | { type: 'file'; content: File, textContent: string | null };
@@ -118,6 +120,7 @@ export default function ImageCloak() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalyzeImageOutput | null>(null);
   const [isAnalysisOnCooldown, setIsAnalysisOnCooldown] = useState(false);
+  const [progress, setProgress] = useState(0);
 
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -132,6 +135,23 @@ export default function ImageCloak() {
     };
   }, [carrierPreview, sourcePreview, encodedImage, decodedFileUrl]);
   
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isAnalyzing) {
+      setProgress(0);
+      timer = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 95) return prev;
+          return prev + 5;
+        });
+      }, 200);
+    } else {
+        setProgress(100);
+    }
+    return () => clearInterval(timer);
+  }, [isAnalyzing]);
+
+
   const applyCanvasEffects = (image: HTMLImageElement, filter: FilterType, watermarkText: string) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -646,10 +666,13 @@ export default function ImageCloak() {
                           <Separator />
                            <Step step={2} title="Analyze & Add Effects">
                                <div className="space-y-4">
-                                  <Button type="button" variant="outline" className="w-full" onClick={handleAnalyzeImage} disabled={isAnalyzing || isAnalysisOnCooldown}>
-                                      {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bot className="mr-2 h-4 w-4" />}
-                                      {isAnalysisOnCooldown ? 'On Cooldown' : 'Analyze Image Suitability'}
-                                  </Button>
+                                  <div className='space-y-2'>
+                                    <Button type="button" variant="outline" className="w-full" onClick={handleAnalyzeImage} disabled={isAnalyzing || isAnalysisOnCooldown}>
+                                        {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bot className="mr-2 h-4 w-4" />}
+                                        {isAnalysisOnCooldown ? 'On Cooldown' : 'Analyze Image Suitability'}
+                                    </Button>
+                                     {isAnalyzing && <Progress value={progress} className="w-full h-1" />}
+                                  </div>
                                     {analysisResult && (
                                         <Alert>
                                             <Sparkles className="h-4 w-4" />
@@ -924,6 +947,8 @@ export default function ImageCloak() {
     </div>
   );
 }
+
+    
 
     
 
