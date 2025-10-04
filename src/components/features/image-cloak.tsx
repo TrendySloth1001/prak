@@ -489,12 +489,16 @@ export default function ImageCloak() {
                 description: "The AI has provided feedback on your image.",
             })
         };
-    } catch (error) {
+    } catch (error: any) {
         console.error("Analysis failed:", error);
+        const description = error.message && error.message.includes('503') 
+            ? "The AI service is currently busy. Please try again in a moment."
+            : "Could not analyze the image. Please try again.";
+
         toast({
             variant: "destructive",
             title: "Analysis Failed",
-            description: "Could not analyze the image. Please try again.",
+            description: description,
         })
     } finally {
         setIsAnalyzing(false);
