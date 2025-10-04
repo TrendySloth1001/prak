@@ -303,11 +303,20 @@ export default function ImageCloak() {
      const addLog: (message: string, status?: EncodingLog['status']) => void = (message, status = 'pending') => {
         setEncodingLogs(prev => {
             const newLogs = [...prev];
-            // If the last log was pending, mark it as complete before adding a new pending one.
-            if (newLogs.length > 0 && status === 'pending') {
-                const lastLog = newLogs[newLogs.length - 1];
-                if (lastLog.status === 'pending') {
-                    lastLog.status = 'complete';
+            // If we get a 'complete' or 'error' status, all previous 'pending' logs should be marked 'complete'.
+            if (status === 'complete' || status === 'error') {
+                newLogs.forEach(log => {
+                    if (log.status === 'pending') {
+                        log.status = 'complete';
+                    }
+                });
+            } else {
+                // If a new 'pending' log arrives, mark the *previous* one as 'complete'.
+                if (newLogs.length > 0) {
+                    const lastLog = newLogs[newLogs.length - 1];
+                    if (lastLog.status === 'pending') {
+                        lastLog.status = 'complete';
+                    }
                 }
             }
             newLogs.push({ message, status });

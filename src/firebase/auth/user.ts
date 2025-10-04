@@ -79,7 +79,7 @@ export async function saveEncodedImage(
         await delay(500);
 
         // Save the metadata to Firestore
-        logCallback(`Sending data to 'users/${userId}/encodedImages' collection...`);
+        logCallback(`Sending data to your secure collection...`);
         setDoc(imageRef, newImageData).catch(async (serverError) => {
              const permissionError = new FirestorePermissionError({
                 path: imageRef.path,
