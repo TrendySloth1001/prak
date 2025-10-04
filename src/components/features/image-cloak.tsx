@@ -10,23 +10,15 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, File, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Sparkles, Wand2 } from 'lucide-react';
+import { UploadCloud, File, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2 } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from '@/firebase';
-import { generateImage, GenerateImageOutput } from '@/ai/flows/generate-image-flow';
 import { signInWithGoogle } from '@/firebase/auth/auth-helpers';
 
 type DataType = 'text' | 'file';
 type DecodedDataType = { type: 'text'; content: string } | { type: 'file'; content: File };
-type CarrierSource = 'upload' | 'ai';
-
-const promptSuggestions = [
-  "A majestic lion in a field of stars",
-  "A futuristic cityscape at sunset",
-  "A secret agent cat in a tuxedo",
-  "A tranquil forest with a hidden waterfall"
-];
+type CarrierSource = 'upload' | 'random';
 
 export default function ImageCloak() {
   const { toast } = useToast();
@@ -50,7 +42,6 @@ export default function ImageCloak() {
   const [decodedFileUrl, setDecodedFileUrl] = useState<string | null>(null);
 
   const [carrierSource, setCarrierSource] = useState<CarrierSource>('upload');
-  const [aiPrompt, setAiPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
@@ -61,34 +52,26 @@ export default function ImageCloak() {
       if (decodedFileUrl) URL.revokeObjectURL(decodedFileUrl);
     };
   }, [carrierPreview, sourcePreview, encodedImage, decodedFileUrl]);
-  
-  const dataURLtoFile = (dataurl: string, filename: string) => {
-    let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)?.[1],
-        bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
-    while(n--){
-        u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new File([u8arr], filename, {type:mime});
-  }
 
-  const handleGenerateImage = async () => {
-    if (!aiPrompt) {
-      toast({ variant: "destructive", title: "Prompt is empty", description: "Please enter a prompt to generate an image." });
-      return;
-    }
+  const handleGenerateRandomImage = async () => {
     setIsGenerating(true);
     if (carrierPreview) URL.revokeObjectURL(carrierPreview);
     setCarrierImage(null);
     setCarrierPreview(null);
     try {
-      const result: GenerateImageOutput = await generateImage({ prompt: aiPrompt });
-      setCarrierPreview(result.imageUrl);
-      const file = dataURLtoFile(result.imageUrl, 'ai-generated-image.png');
+      const randomSeed = Math.floor(Math.random() * 1000);
+      const imageUrl = `https://picsum.photos/seed/${randomSeed}/800/600`;
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const file = new File([blob], `random-image-${randomSeed}.jpg`, { type: 'image/jpeg' });
+      
+      const previewUrl = URL.createObjectURL(file);
+      setCarrierPreview(previewUrl);
       setCarrierImage(file);
 
     } catch (error) {
       console.error(error);
-      toast({ variant: "destructive", title: "Image Generation Failed", description: "Could not generate image. Please try again." });
+      toast({ variant: "destructive", title: "Image Generation Failed", description: "Could not fetch random image. Please try again." });
     }
     setIsGenerating(false);
   };
@@ -208,8 +191,8 @@ export default function ImageCloak() {
         if (dataType === 'text' && secretText) {
           setDecodedData({ type: 'text', content: secretText });
         } else if (dataType === 'file' && secretFile) {
-          setDecodedData({ type: 'file', content: secretFile });
           const url = URL.createObjectURL(secretFile);
+          setDecodedData({ type: 'file', content: secretFile });
           setDecodedFileUrl(url);
         } else {
             setDecodeError('No data was encoded, or the original data is missing.');
@@ -226,7 +209,6 @@ export default function ImageCloak() {
       if (carrierPreview) URL.revokeObjectURL(carrierPreview);
       setCarrierImage(null);
       setCarrierPreview(null);
-      setAiPrompt('');
     } else {
       if (sourcePreview) URL.revokeObjectURL(sourcePreview);
       setSourceImage(null);
@@ -295,8 +277,8 @@ export default function ImageCloak() {
                         <TabsTrigger value="upload">
                           <UploadCloud className="mr-2 h-4 w-4" /> Upload
                         </TabsTrigger>
-                        <TabsTrigger value="ai" disabled={!user}>
-                          <Sparkles className="mr-2 h-4 w-4" /> Generate with AI
+                        <TabsTrigger value="random">
+                          <Wand2 className="mr-2 h-4 w-4" /> Random
                         </TabsTrigger>
                       </TabsList>
                       <TabsContent value="upload" className="mt-4">
@@ -309,20 +291,11 @@ export default function ImageCloak() {
                           onClear={() => onClear('carrier')}
                         />
                       </TabsContent>
-                      <TabsContent value="ai" className="mt-4">
+                      <TabsContent value="random" className="mt-4">
                         <div className="space-y-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="ai-prompt">AI Image Prompt</Label>
-                              <Textarea id="ai-prompt" placeholder='e.g., "A photo of a cat astronaut on Mars"' value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} />
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {promptSuggestions.map(p => (
-                                <Button key={p} type="button" variant="outline" size="sm" onClick={() => setAiPrompt(p)}>{p}</Button>
-                              ))}
-                            </div>
-                            <Button type="button" className="w-full" disabled={isGenerating} onClick={handleGenerateImage}>
+                            <Button type="button" className="w-full" disabled={isGenerating} onClick={handleGenerateRandomImage}>
                               {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                              Generate Image
+                              Generate Random Image
                             </Button>
                             <FileDropzone 
                               onDrop={(e) => handleDrop(e, 'carrier')}
@@ -330,21 +303,13 @@ export default function ImageCloak() {
                               preview={carrierPreview}
                               onClear={() => onClear('carrier')}>
                                 <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
-                                  <Sparkles className="w-10 h-10 mb-4 text-primary" />
+                                  <Wand2 className="w-10 h-10 mb-4 text-primary" />
                                   <p className="mb-2 text-sm text-foreground/80">Your generated image will appear here</p>
                                 </div>
                             </FileDropzone>
                         </div>
                       </TabsContent>
                     </Tabs>
-                    {!user && carrierSource === 'ai' && (
-                        <Alert className="mt-2">
-                          <AlertDescription className="flex items-center justify-between">
-                            Please sign in to use AI generation.
-                            <Button variant="link" className="p-0 h-auto" onClick={signInWithGoogle}>Sign In</Button>
-                          </AlertDescription>
-                        </Alert>
-                    )}
                   </div>
                   <div className="space-y-4 flex flex-col">
                     <div className="space-y-2">
@@ -394,6 +359,14 @@ export default function ImageCloak() {
                     {isEncoding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {isEncoding ? 'Embedding Data...' : 'Generate Image'}
                   </Button>
+                   {!user && (
+                        <Alert className="mt-2 max-w-xs w-full">
+                          <AlertDescription className="flex items-center justify-between">
+                            Please sign in to encode.
+                            <Button variant="link" className="p-0 h-auto" onClick={signInWithGoogle}>Sign In</Button>
+                          </AlertDescription>
+                        </Alert>
+                    )}
 
                   {encodedImage && (
                     <div className="w-full max-w-xs text-center p-4 bg-muted rounded-lg animate-in fade-in">

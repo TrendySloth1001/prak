@@ -1,2 +1,2 @@
-// Flows will be imported for their side effects in this file.
-import './flows/generate-image-flow';
+// This file is intentionally left empty.
+// Flows can be added here for development and testing.
