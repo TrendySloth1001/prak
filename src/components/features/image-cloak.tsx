@@ -305,16 +305,11 @@ export default function ImageCloak() {
             const newLogs = [...prev];
             const lastLog = newLogs[newLogs.length - 1];
             
-            if (lastLog && lastLog.status === 'pending') {
-                lastLog.status = 'complete';
-            }
-
             if (message === 'Metadata saved successfully.') {
-                status = 'complete';
-                 // Mark all previous as complete
-                newLogs.forEach(log => {
-                    if (log.status === 'pending') log.status = 'complete';
-                });
+                // Mark all previous as complete
+                newLogs.forEach(log => log.status = 'complete');
+            } else if (lastLog && lastLog.status === 'pending') {
+                lastLog.status = 'complete';
             }
             
             newLogs.push({ message, status });
@@ -360,16 +355,6 @@ export default function ImageCloak() {
   
     const handleDecode = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!sourceImage || !decodePassword) {
-        toast({
-            variant: "destructive",
-            title: "Missing Information",
-            description: "Please provide an image and a password to extract data.",
-        })
-        return;
-        }
-        
-        setIsDecoding(true);
         setDecodedData(null);
         setDecodingLogs([]);
         if (decodedFileUrl) {
@@ -377,6 +362,17 @@ export default function ImageCloak() {
             setDecodedFileUrl(null);
         }
 
+        if (!sourceImage || !decodePassword) {
+          toast({
+              variant: "destructive",
+              title: "Missing Information",
+              description: "Please provide an image and a password to extract data.",
+          })
+          return;
+        }
+        
+        setIsDecoding(true);
+        
         const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
         const addLog: (message: string, status?: EncodingLog['status']) => void = (message, status = 'pending') => {
@@ -384,8 +380,8 @@ export default function ImageCloak() {
                 const newLogs = [...prev];
                 const lastLog = newLogs[newLogs.length - 1];
 
-                if ((status === 'complete' || status === 'error') && lastLog) {
-                    newLogs.forEach(log => {
+                if ((status === 'complete' || status === 'error') && newLogs.length > 0) {
+                     newLogs.forEach(log => {
                         if (log.status === 'pending') log.status = 'complete';
                     });
                 } else if (lastLog && lastLog.status === 'pending') {
@@ -724,7 +720,7 @@ export default function ImageCloak() {
                         </Button>
 
                       {!user && (
-                            <Alert variant="destructive" className="mt-2 max-w-sm w-full text-center">
+                            <Alert variant="destructive" className="mt-2 max-w-sm w-full">
                               <AlertDescription className="flex items-center justify-center">
                                 Please sign in to continue.
                                 <Button variant="link" className="p-0 h-auto ml-2" onClick={signInWithGoogle}>Sign In</Button>
@@ -855,3 +851,5 @@ export default function ImageCloak() {
     </div>
   );
 }
+
+    
