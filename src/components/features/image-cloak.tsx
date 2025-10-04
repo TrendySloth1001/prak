@@ -21,11 +21,12 @@ import { Separator } from '../ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { analyzeImage, AnalyzeImageOutput } from '@/ai/flows/analyze-image-flow';
+import { generateImage } from '@/ai/flows/generate-image-flow';
 import { Progress } from '@/components/ui/progress';
 
 type DataType = 'text' | 'file';
 type DecodedDataType = { type: 'text'; content: string } | { type: 'file'; content: File, textContent: string | null };
-type CarrierSource = 'upload' | 'random';
+type CarrierSource = 'upload' | 'random' | 'ai';
 type FilterType = 'original' | 'grayscale' | 'sepia';
 type AlgorithmType = 'AES-256' | 'Serpent' | 'Twofish';
 type EncodingLog = { message: string; status: 'pending' | 'complete' | 'error' };
@@ -109,6 +110,7 @@ export default function ImageCloak() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [carrierDescription, setCarrierDescription] = useState('');
   const [randomImageUrl, setRandomImageUrl] = useState<string>('');
+  const [aiPrompt, setAiPrompt] = useState('');
   
   const [activeFilter, setActiveFilter] = useState<FilterType>('original');
   const [watermark, setWatermark] = useState('');
@@ -137,7 +139,7 @@ export default function ImageCloak() {
   
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (isAnalyzing) {
+    if (isAnalyzing || isGenerating) {
       setProgress(0);
       timer = setInterval(() => {
         setProgress((prev) => {
@@ -149,7 +151,7 @@ export default function ImageCloak() {
         setProgress(100);
     }
     return () => clearInterval(timer);
-  }, [isAnalyzing]);
+  }, [isAnalyzing, isGenerating]);
 
 
   const applyCanvasEffects = (image: HTMLImageElement, filter: FilterType, watermarkText: string) => {
@@ -236,6 +238,44 @@ export default function ImageCloak() {
     } catch (error) {
       console.error(error);
       toast({ variant: "destructive", title: "Image Generation Failed", description: "Could not fetch random image. Please try again." });
+    }
+    setIsGenerating(false);
+  };
+  
+  const handleGenerateAIImage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!aiPrompt) {
+        toast({ title: "Prompt is empty", description: "Please enter a description for the image you want to generate." });
+        return;
+    }
+    setIsGenerating(true);
+    if (carrierPreview) URL.revokeObjectURL(carrierPreview);
+    setCarrierImage(null);
+    setCarrierPreview(null);
+    setActiveFilter('original');
+    setAnalysisResult(null);
+
+    try {
+      const result = await generateImage({ prompt: aiPrompt });
+      if (!result || !result.imageUrl) {
+          throw new Error('AI did not return an image.');
+      }
+      
+      const response = await fetch(result.imageUrl);
+      const blob = await response.blob();
+      const file = new File([blob], `ai-generated-image.png`, { type: 'image/png' });
+      
+      const previewUrl = URL.createObjectURL(file);
+      setCarrierPreview(previewUrl);
+      setCarrierImage(file);
+      setCarrierDescription(aiPrompt);
+
+    } catch (error: any) {
+      console.error(error);
+      const description = error.message && error.message.includes('503') 
+            ? "The AI image generation service is currently busy. Please try again in a moment."
+            : "Could not generate the image. Please check your prompt and try again.";
+      toast({ variant: "destructive", title: "Image Generation Failed", description: description });
     }
     setIsGenerating(false);
   };
@@ -622,12 +662,15 @@ export default function ImageCloak() {
                   <div className="space-y-6">
                      <Step step={1} title="Choose Carrier Image">
                         <Tabs value={carrierSource} onValueChange={(value) => setCarrierSource(value as CarrierSource)} className="w-full">
-                          <TabsList className="grid w-full grid-cols-2">
+                          <TabsList className="grid w-full grid-cols-3">
                             <TabsTrigger value="upload">
                               <UploadCloud className="mr-2 h-4 w-4" /> Upload
                             </TabsTrigger>
                             <TabsTrigger value="random">
-                              <Wand2 className="mr-2 h-4 w-4" /> Random
+                              <RefreshCw className="mr-2 h-4 w-4" /> Random
+                            </TabsTrigger>
+                             <TabsTrigger value="ai">
+                              <Wand2 className="mr-2 h-4 w-4" /> AI Generate
                             </TabsTrigger>
                           </TabsList>
                           <TabsContent value="upload" className="mt-4">
@@ -653,8 +696,34 @@ export default function ImageCloak() {
                                   onClear={() => onClear('carrier')}
                                   activeFilter={activeFilter}>
                                     <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4 h-full">
-                                      <Wand2 className="w-10 h-10 mb-4 text-primary" />
+                                      <ImageIcon className="w-10 h-10 mb-4 text-primary" />
                                       <p className="mb-2 text-sm text-foreground/80">Your generated image will appear here</p>
+                                    </div>
+                                </FileDropzone>
+                          </TabsContent>
+                           <TabsContent value="ai" className="mt-4 space-y-4">
+                                <form onSubmit={handleGenerateAIImage} className="space-y-4">
+                                    <Textarea 
+                                        placeholder="e.g., A majestic dragon soaring over a mystical forest at dawn"
+                                        value={aiPrompt}
+                                        onChange={(e) => setAiPrompt(e.target.value)}
+                                        rows={3}
+                                    />
+                                    <Button type="submit" className="w-full" disabled={isGenerating}>
+                                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                                        Generate with AI
+                                    </Button>
+                                </form>
+                                 {(isGenerating) && <Progress value={progress} className="w-full h-1" />}
+                                 <FileDropzone 
+                                  onDrop={(e) => handleDrop(e, 'carrier')}
+                                  onDragOver={handleDragOver}
+                                  preview={carrierPreview}
+                                  onClear={() => onClear('carrier')}
+                                  activeFilter={activeFilter}>
+                                    <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4 h-full">
+                                      <Bot className="w-10 h-10 mb-4 text-primary" />
+                                      <p className="mb-2 text-sm text-foreground/80">Your AI-generated image will appear here</p>
                                     </div>
                                 </FileDropzone>
                           </TabsContent>
