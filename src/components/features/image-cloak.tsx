@@ -55,7 +55,7 @@ const FileDropzone = ({ id, onFileChange, onDrop, onDragOver, preview, onClear, 
         ) : (
           children || (
             <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
-              <UploadCloud className="w-10 h-10 mb-4 text-primary" />
+              <UploadCloud className="w-10 h-10 text-primary" />
               <p className="mb-2 text-sm text-foreground/80"><span className="font-semibold">Click to upload</span> or drag and drop</p>
               <p className="text-xs text-muted-foreground">PNG, JPG, or GIF</p>
             </div>
@@ -300,19 +300,20 @@ export default function ImageCloak() {
     if(encodedImage) URL.revokeObjectURL(encodedImage);
     setEncodedImage(null);
     
-    const addLog: (message: string, status?: EncodingLog['status']) => void = (message, status = 'pending') => {
-      setEncodingLogs(prev => {
-          const newLogs = [...prev];
-          const lastLog = newLogs.length > 0 ? newLogs[newLogs.length - 1] : null;
-
-          if (lastLog && lastLog.status === 'pending' && status !== 'pending') {
-              lastLog.status = 'complete';
-          }
-          
-          newLogs.push({ message, status });
-          return newLogs;
-      });
-  };
+     const addLog: (message: string, status?: EncodingLog['status']) => void = (message, status = 'pending') => {
+        setEncodingLogs(prev => {
+            const newLogs = [...prev];
+            // If the last log was pending, mark it as complete before adding a new pending one.
+            if (newLogs.length > 0 && status === 'pending') {
+                const lastLog = newLogs[newLogs.length - 1];
+                if (lastLog.status === 'pending') {
+                    lastLog.status = 'complete';
+                }
+            }
+            newLogs.push({ message, status });
+            return newLogs;
+        });
+    };
 
     try {
         await saveEncodedImage(firestore, user.uid, {
@@ -332,18 +333,17 @@ export default function ImageCloak() {
              setEncodedImage(carrierPreview);
         }
 
-        addLog('Process complete!', 'complete');
-
         toast({
             title: "Metadata Saved",
             description: "Your image's metadata has been saved to your profile.",
         });
 
     } catch(error: any) {
+       addLog(error.message, 'error');
         toast({
           variant: "destructive",
           title: "Saving Failed",
-          description: error.message || "Could not save the image metadata.",
+          description: "An unexpected error occurred. See logs for details.",
         });
     } finally {
       setIsEncoding(false);
@@ -635,17 +635,25 @@ export default function ImageCloak() {
                         )}
                       
                        {(isEncoding || encodingLogs.length > 0) && (
-                            <div className="w-full max-w-2xl text-left p-4 bg-muted/50 rounded-lg animate-in fade-in space-y-2 mt-4">
-                                <p className="font-semibold text-center mb-2">Processing Logs</p>
-                                <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                            <div className="w-full max-w-2xl font-code bg-gray-900 text-gray-300 rounded-lg animate-in fade-in space-y-2 mt-4 text-sm border border-gray-700 shadow-lg">
+                                <div className="p-3 bg-gray-800 rounded-t-lg flex items-center gap-2">
+                                  <div className="h-3 w-3 rounded-full bg-red-500"></div>
+                                  <div className="h-3 w-3 rounded-full bg-yellow-500"></div>
+                                  <div className="h-3 w-3 rounded-full bg-green-500"></div>
+                                  <p className="font-semibold text-center flex-1 text-gray-400">Processing Logs</p>
+                                </div>
+                                <div className="space-y-2 p-4 max-h-48 overflow-y-auto">
                                 {encodingLogs.map((log, index) => (
-                                    <div key={index} className="flex items-start gap-3 text-sm">
+                                    <div key={index} className="flex items-start gap-3">
                                         <div className="mt-0.5">
-                                            {log.status === 'pending' && <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />}
-                                            {log.status === 'complete' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
-                                            {log.status === 'error' && <X className="h-4 w-4 text-destructive" />}
+                                            {log.status === 'pending' && <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />}
+                                            {log.status === 'complete' && <CheckCircle2 className="h-4 w-4 text-green-400" />}
+                                            {log.status === 'error' && <X className="h-4 w-4 text-red-500" />}
                                         </div>
-                                        <span className={cn('flex-1', log.status === 'error' && 'text-destructive font-mono text-xs')}>{log.message}</span>
+                                        <span className={cn('flex-1', 
+                                          log.status === 'error' ? 'text-red-400' :
+                                          log.status === 'complete' ? 'text-gray-400' : 'text-gray-200'
+                                        )}>{log.message}</span>
                                     </div>
                                 ))}
                                 </div>
