@@ -23,7 +23,7 @@ type CarrierSource = 'upload' | 'random';
 
 export default function ImageCloak() {
   const { toast } = useToast();
-  const { user, firestore } = useFirebase();
+  const { user, firestore, storage } = useFirebase();
 
   const [carrierImage, setCarrierImage] = useState<File | null>(null);
   const [carrierPreview, setCarrierPreview] = useState<string | null>(null);
@@ -139,7 +139,7 @@ export default function ImageCloak() {
     e.stopPropagation();
   };
 
-  const handleEncode = (e: React.FormEvent) => {
+  const handleEncode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
       toast({ title: "Please sign in", description: "You must be signed in to encode images.", variant: "destructive", action: <Button onClick={signInWithGoogle}>Sign In</Button> });
@@ -158,27 +158,35 @@ export default function ImageCloak() {
     if(encodedImage) URL.revokeObjectURL(encodedImage);
     setEncodedImage(null);
 
-    // Simulate encoding process
-    setTimeout(() => {
-      if (carrierImage) {
-        const newEncodedImageUrl = URL.createObjectURL(carrierImage);
-        setEncodedImage(newEncodedImageUrl);
-        
-        // Save to Firestore
-        if (firestore && user) {
-          saveEncodedImage(firestore, user.uid, {
+    try {
+        // In a real steganography app, the `carrierImage` would be processed
+        // to embed the secret data, and the result would be a new image file.
+        // For this simulation, we'll just use the original carrierImage as the "encoded" one.
+        const encodedImageFile = carrierImage;
+
+        await saveEncodedImage(firestore, user.uid, {
             carrierImageDescription: carrierDescription,
-            carrierImagePreview: carrierPreview || '', // In a real app, upload to storage and save URL
-            encryptionKey: encodePassword, // For simplicity, storing password. In real app, store a key reference.
-          });
-        }
-      }
+            encryptionKey: encodePassword, // For simplicity. In real app, store a key reference.
+        }, encodedImageFile);
+
+        const newEncodedImageUrl = URL.createObjectURL(encodedImageFile);
+        setEncodedImage(newEncodedImageUrl);
+
+        toast({
+            title: "Image Processed & Saved",
+            description: "Your data has been secretly embedded and saved to your profile.",
+        });
+
+    } catch(error) {
+        console.error(error);
+         toast({
+            variant: "destructive",
+            title: "Encoding Failed",
+            description: "Could not save the encoded image. Check permissions and try again.",
+        });
+    } finally {
       setIsEncoding(false);
-      toast({
-        title: "Image Processed & Saved",
-        description: "Your data has been secretly embedded and saved to your profile.",
-      })
-    }, 2000);
+    }
   };
   
   const handleDecode = (e: React.FormEvent) => {

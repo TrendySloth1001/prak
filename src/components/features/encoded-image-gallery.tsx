@@ -3,10 +3,10 @@
 
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
-import { FileQuestion, Image as ImageIcon, Loader2 } from "lucide-react";
+import { FileQuestion, Image as ImageIcon, Loader2, Download } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import Image from 'next/image';
-import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
 import { formatDistanceToNow } from 'date-fns';
 import type { EncodedImage } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
@@ -17,10 +17,10 @@ function EncodedImageCard({ image }: { image: EncodedImage }) {
 
     return (
         <Card className="flex flex-col">
-            <CardHeader>
-                <div className="aspect-video relative w-full bg-muted rounded-md">
-                   {image.carrierImagePreview ? (
-                        <Image src={image.carrierImagePreview} alt={image.carrierImageDescription} fill className="object-cover rounded-md" />
+            <CardHeader className="p-0">
+                <div className="aspect-video relative w-full bg-muted">
+                   {image.carrierImageUrl ? (
+                        <Image src={image.carrierImageUrl} alt={image.carrierImageDescription} fill className="object-cover rounded-t-lg" />
                    ) : (
                         <div className="flex items-center justify-center h-full">
                             <ImageIcon className="h-10 w-10 text-muted-foreground" />
@@ -28,11 +28,17 @@ function EncodedImageCard({ image }: { image: EncodedImage }) {
                    )}
                 </div>
             </CardHeader>
-            <CardContent className="flex-grow">
-                <CardTitle className="text-lg leading-snug">{image.carrierImageDescription}</CardTitle>
+            <CardContent className="flex-grow p-4">
+                <CardTitle className="text-base leading-snug truncate" title={image.carrierImageDescription}>{image.carrierImageDescription}</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">{formattedDate}</p>
             </CardContent>
-            <CardFooter>
-                 <p className="text-xs text-muted-foreground">{formattedDate}</p>
+            <CardFooter className="p-4 pt-0">
+                 <Button asChild variant="secondary" size="sm" className="w-full">
+                    <a href={image.carrierImageUrl} target="_blank" download>
+                        <Download className="mr-2 h-4 w-4" />
+                        Download
+                    </a>
+                 </Button>
             </CardFooter>
         </Card>
     )
@@ -60,10 +66,13 @@ export default function EncodedImageGallery() {
                         <CardHeader>
                              <Skeleton className="h-32 w-full" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="p-4">
                              <Skeleton className="h-5 w-3/4 mb-2" />
                              <Skeleton className="h-4 w-1/2" />
                         </CardContent>
+                         <CardFooter className="p-4">
+                            <Skeleton className="h-9 w-full" />
+                        </CardFooter>
                     </Card>
                 ))}
             </div>
@@ -84,7 +93,7 @@ export default function EncodedImageGallery() {
 
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {images.map((image) => (
                 <EncodedImageCard key={image.id} image={image} />
             ))}
