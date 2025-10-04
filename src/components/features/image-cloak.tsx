@@ -101,7 +101,6 @@ export default function ImageCloak() {
   const [decodePassword, setDecodePassword] = useState('');
   const [isDecoding, setIsDecoding] = useState(false);
   const [decodedData, setDecodedData] = useState<DecodedDataType | null>(null);
-  const [decodeError, setDecodeError] = useState<string | null>(null);
   const [decodedFileUrl, setDecodedFileUrl] = useState<string | null>(null);
 
   const [carrierSource, setCarrierSource] = useState<CarrierSource>('upload');
@@ -114,6 +113,7 @@ export default function ImageCloak() {
   const [algorithm, setAlgorithm] = useState<AlgorithmType>('AES-256');
 
   const [encodingLogs, setEncodingLogs] = useState<EncodingLog[]>([]);
+  const [decodingLogs, setDecodingLogs] = useState<EncodingLog[]>([]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -234,7 +234,7 @@ export default function ImageCloak() {
         setSourceImage(file);
         setSourcePreview(newPreviewUrl);
         setDecodedData(null);
-        setDecodeError(null);
+        setDecodingLogs([]);
       } else if (type === 'secret') {
         setSecretFile(file);
       }
@@ -264,7 +264,7 @@ export default function ImageCloak() {
         setSourceImage(file);
         setSourcePreview(newPreviewUrl);
         setDecodedData(null);
-        setDecodeError(null);
+        setDecodingLogs([]);
       }
     } else {
         toast({
@@ -301,25 +301,26 @@ export default function ImageCloak() {
     setEncodedImage(null);
     
     const addLog: (message: string, status?: EncodingLog['status']) => void = (message, status = 'pending') => {
-      setEncodingLogs(prev => {
-          const newLogs = [...prev];
-          const lastLog = newLogs[newLogs.length - 1];
+        setEncodingLogs(prev => {
+            const newLogs = [...prev];
+            const lastLog = newLogs[newLogs.length - 1];
 
-          // If the new message is about success or error, all previous 'pending' become 'complete'
-          if ((status === 'complete' || status === 'error') && lastLog) {
-              newLogs.forEach(log => {
-                  if (log.status === 'pending') {
-                      log.status = 'complete';
-                  }
-              });
-          } else if (lastLog && lastLog.status === 'pending') {
-              lastLog.status = 'complete';
-          }
-          
-          newLogs.push({ message, status });
-          return newLogs;
-      });
-  };
+            if (status === 'complete' && !lastLog) {
+                 newLogs.push({ message, status });
+                 return newLogs;
+            }
+            
+            if (lastLog && lastLog.status === 'pending') {
+                lastLog.status = 'complete';
+            }
+            
+            if (status !== 'complete' || message !== 'Metadata saved successfully.') {
+              newLogs.push({ message, status });
+            }
+
+            return newLogs;
+        });
+    };
 
     try {
         await saveEncodedImage(firestore, user.uid, {
@@ -356,55 +357,89 @@ export default function ImageCloak() {
     }
   };
   
-  const handleDecode = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!sourceImage || !decodePassword) {
-       toast({
-        variant: "destructive",
-        title: "Missing Information",
-        description: "Please provide an image and a password to extract data.",
-      })
-      return;
-    }
-    
-    setIsDecoding(true);
-    setDecodedData(null);
-    setDecodeError(null);
-    if (decodedFileUrl) {
-      URL.revokeObjectURL(decodedFileUrl);
-      setDecodedFileUrl(null);
-    }
-
-    // Simulate decoding process
-    setTimeout(() => {
-      // This is a simulation. A real app would check if the password matches
-      // the key used during the (simulated) encoding.
-      if (decodePassword === encodePassword && encodePassword !== '') {
-        if (dataType === 'text' && secretText) {
-          setDecodedData({ type: 'text', content: secretText, textContent: null });
-        } else if (dataType === 'file' && secretFile) {
-          const url = URL.createObjectURL(secretFile);
-          setDecodedFileUrl(url);
-
-          if (secretFile.type.startsWith('text/')) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              setDecodedData({ type: 'file', content: secretFile, textContent: event.target?.result as string });
-            };
-            reader.readAsText(secretFile);
-          } else {
-             setDecodedData({ type: 'file', content: secretFile, textContent: null });
-          }
-
-        } else {
-            setDecodeError('No data was originally encoded in this session, or the original data is missing.');
+    const handleDecode = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!sourceImage || !decodePassword) {
+        toast({
+            variant: "destructive",
+            title: "Missing Information",
+            description: "Please provide an image and a password to extract data.",
+        })
+        return;
         }
-      } else {
-        setDecodeError('Decryption failed. Invalid password or no data found in the image.');
-      }
-      setIsDecoding(false);
-    }, 2000);
-  };
+        
+        setIsDecoding(true);
+        setDecodedData(null);
+        setDecodingLogs([]);
+        if (decodedFileUrl) {
+            URL.revokeObjectURL(decodedFileUrl);
+            setDecodedFileUrl(null);
+        }
+
+        const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+        const addLog: (message: string, status?: EncodingLog['status']) => void = (message, status = 'pending') => {
+            setDecodingLogs(prev => {
+                const newLogs = [...prev];
+                const lastLog = newLogs[newLogs.length - 1];
+
+                if ((status === 'complete' || status === 'error') && lastLog) {
+                    newLogs.forEach(log => {
+                        if (log.status === 'pending') log.status = 'complete';
+                    });
+                } else if (lastLog && lastLog.status === 'pending') {
+                    lastLog.status = 'complete';
+                }
+                
+                newLogs.push({ message, status });
+                return newLogs;
+            });
+        };
+
+        try {
+            addLog('Initiating decoding process...');
+            await delay(500);
+
+            addLog('Analyzing image pixels...');
+            await delay(700);
+
+            addLog('Locating hidden data signature...');
+            await delay(800);
+
+            // This is a simulation. A real app would check if the password matches
+            // the key used during the (simulated) encoding.
+            if (decodePassword === encodePassword && encodePassword !== '') {
+                addLog('Password accepted. Decrypting data...', 'pending');
+                await delay(1000);
+
+                if (dataType === 'text' && secretText) {
+                    setDecodedData({ type: 'text', content: secretText, textContent: null });
+                } else if (dataType === 'file' && secretFile) {
+                    const url = URL.createObjectURL(secretFile);
+                    setDecodedFileUrl(url);
+
+                    if (secretFile.type.startsWith('text/')) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                        setDecodedData({ type: 'file', content: secretFile, textContent: event.target?.result as string });
+                        };
+                        reader.readAsText(secretFile);
+                    } else {
+                        setDecodedData({ type: 'file', content: secretFile, textContent: null });
+                    }
+                } else {
+                    throw new Error('No data was originally encoded in this session, or the original data is missing.');
+                }
+                addLog('Decryption complete. Data extracted successfully.', 'complete');
+            } else {
+                throw new Error('Decryption failed. Invalid password or no data found in the image.');
+            }
+        } catch (error: any) {
+            addLog(error.message, 'error');
+        } finally {
+            setIsDecoding(false);
+        }
+    };
   
   const onClear = (type: 'carrier' | 'source' | 'secret') => {
     if (type === 'carrier') {
@@ -442,6 +477,32 @@ export default function ImageCloak() {
     const viewableTypes = ['application/pdf', 'image/', 'text/'];
     return viewableTypes.some(type => file.type.startsWith(type));
   };
+
+  const LogViewer = ({logs}: {logs: EncodingLog[]}) => (
+    <div className="w-full max-w-2xl font-code bg-gray-900 text-gray-300 rounded-lg animate-in fade-in space-y-2 mt-4 text-sm border border-gray-700 shadow-lg">
+        <div className="p-3 bg-gray-800 rounded-t-lg flex items-center gap-2">
+          <div className="h-3 w-3 rounded-full bg-red-500"></div>
+          <div className="h-3 w-3 rounded-full bg-yellow-500"></div>
+          <div className="h-3 w-3 rounded-full bg-green-500"></div>
+          <p className="font-semibold text-center flex-1 text-gray-400">Processing Logs</p>
+        </div>
+        <div className="space-y-2 p-4 max-h-48 overflow-y-auto">
+        {logs.map((log, index) => (
+            <div key={index} className="flex items-start gap-3">
+                <div className="mt-0.5">
+                    {log.status === 'pending' && <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />}
+                    {log.status === 'complete' && <CheckCircle2 className="h-4 w-4 text-green-400" />}
+                    {log.status === 'error' && <X className="h-4 w-4 text-red-500" />}
+                </div>
+                <span className={cn('flex-1', 
+                  log.status === 'error' ? 'text-red-400' :
+                  log.status === 'complete' ? 'text-gray-400' : 'text-gray-200'
+                )}>{log.message}</span>
+            </div>
+        ))}
+        </div>
+    </div>
+  )
 
 
   return (
@@ -648,29 +709,7 @@ export default function ImageCloak() {
                         )}
                       
                        {(isEncoding || encodingLogs.length > 0) && (
-                            <div className="w-full max-w-2xl font-code bg-gray-900 text-gray-300 rounded-lg animate-in fade-in space-y-2 mt-4 text-sm border border-gray-700 shadow-lg">
-                                <div className="p-3 bg-gray-800 rounded-t-lg flex items-center gap-2">
-                                  <div className="h-3 w-3 rounded-full bg-red-500"></div>
-                                  <div className="h-3 w-3 rounded-full bg-yellow-500"></div>
-                                  <div className="h-3 w-3 rounded-full bg-green-500"></div>
-                                  <p className="font-semibold text-center flex-1 text-gray-400">Processing Logs</p>
-                                </div>
-                                <div className="space-y-2 p-4 max-h-48 overflow-y-auto">
-                                {encodingLogs.map((log, index) => (
-                                    <div key={index} className="flex items-start gap-3">
-                                        <div className="mt-0.5">
-                                            {log.status === 'pending' && <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />}
-                                            {log.status === 'complete' && <CheckCircle2 className="h-4 w-4 text-green-400" />}
-                                            {log.status === 'error' && <X className="h-4 w-4 text-red-500" />}
-                                        </div>
-                                        <span className={cn('flex-1', 
-                                          log.status === 'error' ? 'text-red-400' :
-                                          log.status === 'complete' ? 'text-gray-400' : 'text-gray-200'
-                                        )}>{log.message}</span>
-                                    </div>
-                                ))}
-                                </div>
-                            </div>
+                            <LogViewer logs={encodingLogs} />
                         )}
 
                       {encodedImage && !isEncoding && (
@@ -698,9 +737,9 @@ export default function ImageCloak() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleDecode} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                  <div className="space-y-2">
-                    <Label>1. Source Image</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                  <div className="space-y-4">
+                    <Label className='pl-1'>1. Source Image</Label>
                     <FileDropzone 
                       id="source-image" 
                       onFileChange={(e) => handleFileChange(e, 'source')} 
@@ -725,8 +764,14 @@ export default function ImageCloak() {
                   </div>
                 </div>
                 
+                 {(isDecoding || decodingLogs.length > 0) && (
+                    <div className="pt-4">
+                        <LogViewer logs={decodingLogs} />
+                    </div>
+                 )}
+
                 <div className="pt-4 min-h-[110px]">
-                   {decodedData && (
+                   {decodedData && !isDecoding && (
                     <Alert variant="default" className="bg-green-100 dark:bg-green-900/50 border-green-300 dark:border-green-700 animate-in fade-in">
                       <ShieldCheck className="h-4 w-4 !text-green-600 dark:!text-green-400" />
                       <AlertTitle className="text-green-800 dark:text-green-300">Data Extracted Successfully</AlertTitle>
@@ -773,12 +818,12 @@ export default function ImageCloak() {
                       </AlertDescription>
                     </Alert>
                   )}
-                  {decodeError && (
+                  {decodingLogs.some(log => log.status === 'error') && !isDecoding && (
                     <Alert variant="destructive" className="animate-in fade-in">
                       <Unplug className="h-4 w-4" />
                       <AlertTitle>Extraction Failed</AlertTitle>
                       <AlertDescription>
-                        {decodeError}
+                        {decodingLogs.find(log => log.status === 'error')?.message}
                       </AlertDescription>
                     </Alert>
                   )}
