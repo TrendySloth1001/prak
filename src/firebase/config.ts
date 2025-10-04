@@ -1,8 +1,10 @@
+// This file is DEPRECATED and will be removed in a future update.
+// Firebase configuration is now loaded from environment variables.
+
 export const firebaseConfig = {
-  "projectId": "studio-6856413441-9ef50",
-  "appId": "1:556048751811:web:bd44e3d7a3e0cbae5d1676",
-  "apiKey": "AIzaSyA_T-7NA1KSfloxqwRPSlANWAEB-cOpQuw",
-  "authDomain": "studio-6856413441-9ef50.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "556048751811"
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
 };
