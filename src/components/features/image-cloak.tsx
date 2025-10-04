@@ -140,8 +140,11 @@ export default function ImageCloak() {
     setDecodeError(null);
 
     setTimeout(() => {
-      if (decodePassword === 'secret') {
-        setDecodedData('This is the hidden message! Congratulations, you have uncovered the secret.');
+      if (decodePassword === encodePassword && encodePassword !== '') {
+        const message = dataType === 'text' 
+            ? secretText
+            : secretFile?.name || "secret file";
+        setDecodedData(`This is the hidden message: "${message}"`);
       } else {
         setDecodeError('Decryption failed. Invalid password or no data found in the image.');
       }
