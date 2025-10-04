@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { signInWithGoogle } from '@/firebase/auth/auth-helpers';
+import Link from 'next/link';
 
 function UserProfile() {
   const { user } = useUser();
@@ -51,6 +52,13 @@ function UserProfile() {
             </p>
           </div>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/profile">
+            <UserIcon className="mr-2 h-4 w-4" />
+            <span>Profile</span>
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => signOut(auth)}>
           <LogOut className="mr-2 h-4 w-4" />
