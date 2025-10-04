@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw, Palette, Type, Upload, Settings, ChevronDown, CheckCircle2, FileType, Image as ImageIcon } from 'lucide-react';
+import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw, Palette, Type, Upload, Settings, ChevronDown, CheckCircle2, FileType, Image as ImageIcon, Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from '@/firebase';
@@ -311,6 +311,10 @@ export default function ImageCloak() {
 
             if (message === 'Metadata saved successfully.') {
                 status = 'complete';
+                 // Mark all previous as complete
+                newLogs.forEach(log => {
+                    if (log.status === 'pending') log.status = 'complete';
+                });
             }
             
             newLogs.push({ message, status });
@@ -497,6 +501,7 @@ export default function ImageCloak() {
 
   const getFilePreview = (file: File, fileUrl: string, textContent: string | null) => {
     const fileType = file.type;
+    const isViewable = fileType.startsWith('image/') || fileType === 'application/pdf' || textContent;
     
     if (fileType.startsWith('image/')) {
       return <Image src={fileUrl} alt="Decoded image preview" width={400} height={300} className="rounded-md object-contain mx-auto max-h-80" />;
@@ -518,7 +523,12 @@ export default function ImageCloak() {
         </div>
     );
   };
-
+  
+    const isFileViewable = (file: File | undefined): boolean => {
+      if (!file) return false;
+      const viewableTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'text/plain'];
+      return viewableTypes.includes(file.type);
+    };
 
   return (
     <div className="w-full">
@@ -806,12 +816,22 @@ export default function ImageCloak() {
                               <div className="p-4 border rounded-lg bg-background/50">
                                 {getFilePreview(decodedData.content, decodedFileUrl, decodedData.textContent)}
                               </div>
-                              <Button asChild variant="secondary" size="sm" className="w-full sm:w-auto">
-                                <a href={decodedFileUrl} download={decodedData.content.name}>
-                                  <Download className="mr-2 h-4 w-4" />
-                                  Download {decodedData.content.name}
-                                </a>
-                              </Button>
+                              <div className="flex gap-2 flex-wrap">
+                                <Button asChild variant="secondary" size="sm">
+                                  <a href={decodedFileUrl} download={decodedData.content.name}>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Download {decodedData.content.name}
+                                  </a>
+                                </Button>
+                                {isFileViewable(decodedData.content) && (
+                                   <Button asChild variant="outline" size="sm">
+                                     <a href={decodedFileUrl} target="_blank" rel="noopener noreferrer">
+                                       <Eye className="mr-2 h-4 w-4" />
+                                       View File
+                                     </a>
+                                   </Button>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -836,5 +856,3 @@ export default function ImageCloak() {
     </div>
   );
 }
-
-    
