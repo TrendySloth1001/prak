@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, File, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2 } from 'lucide-react';
+import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2 } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from '@/firebase';
@@ -336,7 +336,7 @@ export default function ImageCloak() {
                       />
                     ) : (
                       <Label htmlFor="secret-file" className="flex items-center gap-2 rounded-md border border-input p-2.5 cursor-pointer hover:bg-muted/50">
-                        <File className="h-6 w-6 text-muted-foreground"/>
+                        <FileIcon className="h-6 w-6 text-muted-foreground"/>
                         <span className="flex-grow text-sm text-muted-foreground">
                           {secretFile ? secretFile.name : 'Choose a file...'}
                         </span>
