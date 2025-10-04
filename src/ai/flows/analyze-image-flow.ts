@@ -30,7 +30,7 @@ const analyzePrompt = ai.definePrompt({
     name: 'analyzeImagePrompt',
     input: { schema: AnalyzeImageInputSchema },
     output: { schema: AnalyzeImageOutputSchema },
-    model: 'googleai/gemini-pro-vision',
+    model: 'googleai/gemini-1.5-flash-latest',
     prompt: `You are a steganography expert. Analyze the provided image to determine its suitability for hiding data.
 
 Consider the following factors:
