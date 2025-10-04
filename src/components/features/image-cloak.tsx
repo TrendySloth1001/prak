@@ -14,6 +14,7 @@ import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 
 type DataType = 'text' | 'file';
+type DecodedDataType = { type: 'text'; content: string } | { type: 'file'; content: File };
 
 export default function ImageCloak() {
   const { toast } = useToast();
@@ -31,16 +32,18 @@ export default function ImageCloak() {
   const [sourcePreview, setSourcePreview] = useState<string | null>(null);
   const [decodePassword, setDecodePassword] = useState('');
   const [isDecoding, setIsDecoding] = useState(false);
-  const [decodedData, setDecodedData] = useState<string | null>(null);
+  const [decodedData, setDecodedData] = useState<DecodedDataType | null>(null);
   const [decodeError, setDecodeError] = useState<string | null>(null);
+  const [decodedFileUrl, setDecodedFileUrl] = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
       if (carrierPreview) URL.revokeObjectURL(carrierPreview);
       if (sourcePreview) URL.revokeObjectURL(sourcePreview);
       if (encodedImage) URL.revokeObjectURL(encodedImage);
+      if (decodedFileUrl) URL.revokeObjectURL(decodedFileUrl);
     };
-  }, [carrierPreview, sourcePreview, encodedImage]);
+  }, [carrierPreview, sourcePreview, encodedImage, decodedFileUrl]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'carrier' | 'source' | 'secret') => {
     const file = e.target.files?.[0];
@@ -138,13 +141,22 @@ export default function ImageCloak() {
     setIsDecoding(true);
     setDecodedData(null);
     setDecodeError(null);
+    if (decodedFileUrl) {
+      URL.revokeObjectURL(decodedFileUrl);
+      setDecodedFileUrl(null);
+    }
 
     setTimeout(() => {
       if (decodePassword === encodePassword && encodePassword !== '') {
-        const message = dataType === 'text' 
-            ? secretText
-            : secretFile?.name || "secret file";
-        setDecodedData(`This is the hidden message: "${message}"`);
+        if (dataType === 'text' && secretText) {
+          setDecodedData({ type: 'text', content: secretText });
+        } else if (dataType === 'file' && secretFile) {
+          setDecodedData({ type: 'file', content: secretFile });
+          const url = URL.createObjectURL(secretFile);
+          setDecodedFileUrl(url);
+        } else {
+            setDecodeError('No data was encoded, or the original data is missing.');
+        }
       } else {
         setDecodeError('Decryption failed. Invalid password or no data found in the image.');
       }
@@ -327,8 +339,20 @@ export default function ImageCloak() {
                   <Alert variant="default" className="bg-green-100 dark:bg-green-900/50 border-green-300 dark:border-green-700 animate-in fade-in">
                     <ShieldCheck className="h-4 w-4 !text-green-600 dark:!text-green-400" />
                     <AlertTitle className="text-green-800 dark:text-green-300">Data Extracted Successfully</AlertTitle>
-                    <AlertDescription className="text-green-700 dark:text-green-400 font-mono text-sm break-words">
-                      {decodedData}
+                    <AlertDescription>
+                      {decodedData.type === 'text' && (
+                        <p className="text-green-700 dark:text-green-400 font-mono text-sm break-words">
+                          {decodedData.content}
+                        </p>
+                      )}
+                      {decodedData.type === 'file' && decodedFileUrl && (
+                        <Button asChild variant="secondary" size="sm" className="mt-2">
+                          <a href={decodedFileUrl} download={decodedData.content.name}>
+                            <Download className="mr-2 h-4 w-4" />
+                            Download {decodedData.content.name}
+                          </a>
+                        </Button>
+                      )}
                     </AlertDescription>
                   </Alert>
                 )}
