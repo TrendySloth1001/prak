@@ -10,12 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw, Palette, Type, Upload, Settings, ChevronDown, CheckCircle2, View } from 'lucide-react';
+import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw, Palette, Type, Upload, Settings, ChevronDown, CheckCircle2, FileType, Image as ImageIcon } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from '@/firebase';
 import { signInWithGoogle } from '@/firebase/auth/auth-helpers';
-import { saveEncodedImage } from '@/firebase/auth/user';
+import { saveEncodedImage, upsertUserProfile } from '@/firebase/auth/user';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
@@ -304,19 +304,16 @@ export default function ImageCloak() {
         setEncodingLogs(prev => {
             const newLogs = [...prev];
             const lastLog = newLogs[newLogs.length - 1];
-
-            if (status === 'complete' && !lastLog) {
-                 newLogs.push({ message, status });
-                 return newLogs;
-            }
             
             if (lastLog && lastLog.status === 'pending') {
                 lastLog.status = 'complete';
             }
-            
-            if (status !== 'complete' || message !== 'Metadata saved successfully.') {
-              newLogs.push({ message, status });
+
+            if (message === 'Metadata saved successfully.') {
+                status = 'complete';
             }
+            
+            newLogs.push({ message, status });
 
             return newLogs;
         });
@@ -472,12 +469,6 @@ export default function ImageCloak() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
   
-  const isFileViewable = (file: File | null): boolean => {
-    if (!file) return false;
-    const viewableTypes = ['application/pdf', 'image/', 'text/'];
-    return viewableTypes.some(type => file.type.startsWith(type));
-  };
-
   const LogViewer = ({logs}: {logs: EncodingLog[]}) => (
     <div className="w-full max-w-2xl font-code bg-gray-900 text-gray-300 rounded-lg animate-in fade-in space-y-2 mt-4 text-sm border border-gray-700 shadow-lg">
         <div className="p-3 bg-gray-800 rounded-t-lg flex items-center gap-2">
@@ -502,7 +493,31 @@ export default function ImageCloak() {
         ))}
         </div>
     </div>
-  )
+  );
+
+  const getFilePreview = (file: File, fileUrl: string, textContent: string | null) => {
+    const fileType = file.type;
+    
+    if (fileType.startsWith('image/')) {
+      return <Image src={fileUrl} alt="Decoded image preview" width={400} height={300} className="rounded-md object-contain mx-auto max-h-80" />;
+    }
+    
+    if (fileType === 'application/pdf') {
+        return <object data={fileUrl} type="application/pdf" width="100%" height="500px"><p>Your browser does not support PDF previews. Please download the file to view it.</p></object>;
+    }
+    
+    if (textContent) {
+      return <Textarea value={textContent} readOnly className="font-mono bg-background/50 h-64" />;
+    }
+
+    return (
+        <div className="flex flex-col items-center justify-center p-8 text-center bg-muted/50 rounded-lg">
+            <FileType className="h-12 w-12 text-muted-foreground" />
+            <p className="mt-4 font-semibold">{file.name}</p>
+            <p className="text-sm text-muted-foreground">No preview available for this file type.</p>
+        </div>
+    );
+  };
 
 
   return (
@@ -775,46 +790,31 @@ export default function ImageCloak() {
                     <Alert variant="default" className="bg-green-100 dark:bg-green-900/50 border-green-300 dark:border-green-700 animate-in fade-in">
                       <ShieldCheck className="h-4 w-4 !text-green-600 dark:!text-green-400" />
                       <AlertTitle className="text-green-800 dark:text-green-300">Data Extracted Successfully</AlertTitle>
-                      <AlertDescription>
-                        {decodedData.type === 'text' && (
-                          <Textarea
-                            value={decodedData.content}
-                            readOnly={false} // Make it editable
-                            onChange={(e) => setDecodedData({...decodedData, content: e.target.value})}
-                            className="mt-2 font-mono bg-background/50"
-                            rows={5}
-                          />
-                        )}
-                        {decodedData.type === 'file' && (
-                           <div className="mt-2 space-y-4">
-                            {decodedData.textContent ? (
-                                <>
-                                 <p className="font-semibold text-sm">File: {decodedData.content.name}</p>
-                                 <Textarea
-                                    value={decodedData.textContent}
-                                    readOnly
-                                    className="font-mono bg-background/50 h-48"
-                                  />
-                                </>
-                            ) : (
-                                <p>File: {decodedData.content.name} ({formatFileSize(decodedData.content.size)})</p>
-                            )}
-                            <div className="flex gap-2 mt-2">
-                                <Button asChild variant="secondary" size="sm">
-                                    <a href={decodedFileUrl!} download={decodedData.content.name}>
-                                    <Download className="mr-2 h-4 w-4" />
-                                    Download File
-                                    </a>
-                                </Button>
-                                <Button asChild variant="outline" size="sm" disabled={!isFileViewable(decodedData.content)}>
-                                    <a href={decodedFileUrl!} target="_blank" rel="noopener noreferrer">
-                                        <View className="mr-2 h-4 w-4" />
-                                        View File
-                                    </a>
-                                </Button>
+                      <AlertDescription asChild>
+                        <div className="space-y-4 mt-2">
+                          {decodedData.type === 'text' && (
+                            <Textarea
+                              value={decodedData.content}
+                              readOnly={false}
+                              onChange={(e) => setDecodedData({...decodedData, content: e.target.value})}
+                              className="mt-2 font-mono bg-background/50"
+                              rows={5}
+                            />
+                          )}
+                          {decodedData.type === 'file' && decodedFileUrl && (
+                            <div className="space-y-4">
+                              <div className="p-4 border rounded-lg bg-background/50">
+                                {getFilePreview(decodedData.content, decodedFileUrl, decodedData.textContent)}
+                              </div>
+                              <Button asChild variant="secondary" size="sm" className="w-full sm:w-auto">
+                                <a href={decodedFileUrl} download={decodedData.content.name}>
+                                  <Download className="mr-2 h-4 w-4" />
+                                  Download {decodedData.content.name}
+                                </a>
+                              </Button>
                             </div>
-                           </div>
-                        )}
+                          )}
+                        </div>
                       </AlertDescription>
                     </Alert>
                   )}
@@ -836,3 +836,5 @@ export default function ImageCloak() {
     </div>
   );
 }
+
+    
