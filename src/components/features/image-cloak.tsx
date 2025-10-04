@@ -20,7 +20,6 @@ import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { generateImage } from '@/ai/flows/generate-image-flow';
 
 type DataType = 'text' | 'file';
 type DecodedDataType = { type: 'text'; content: string } | { type: 'file'; content: File, textContent: string | null };
@@ -108,7 +107,6 @@ export default function ImageCloak() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [carrierDescription, setCarrierDescription] = useState('');
   const [randomImageUrl, setRandomImageUrl] = useState<string>('');
-  const [aiPrompt, setAiPrompt] = useState('');
   
   const [activeFilter, setActiveFilter] = useState<FilterType>('original');
   const [watermark, setWatermark] = useState('');
@@ -187,41 +185,6 @@ export default function ImageCloak() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFilter, watermark, carrierPreview]);
   
-  const handleAiGenerate = async () => {
-    if (!aiPrompt) {
-      toast({ variant: "destructive", title: "Prompt is empty", description: "Please describe the image you want to generate." });
-      return;
-    }
-    setIsGenerating(true);
-    if (carrierPreview) URL.revokeObjectURL(carrierPreview);
-    setCarrierImage(null);
-    setCarrierPreview(null);
-    setRandomImageUrl('');
-    setActiveFilter('original');
-
-    try {
-      const result = await generateImage({ prompt: aiPrompt });
-      if (!result?.imageUrl) throw new Error("AI did not return an image.");
-
-      // The result is a data URI, we need to convert it to a File object
-      const response = await fetch(result.imageUrl);
-      const blob = await response.blob();
-      const file = new File([blob], `ai-generated-${Date.now()}.png`, { type: 'image/png' });
-      
-      const previewUrl = URL.createObjectURL(file);
-      setCarrierPreview(previewUrl);
-      setCarrierImage(file);
-      setCarrierDescription(aiPrompt); // Use the prompt as the description
-      setRandomImageUrl(result.imageUrl); // Store the data URI
-
-    } catch (error: any) {
-      console.error(error);
-      toast({ variant: "destructive", title: "AI Image Generation Failed", description: error.message || "Could not generate image. Please try again." });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
   const handleGenerateRandomImage = async () => {
     setIsGenerating(true);
     if (carrierPreview) URL.revokeObjectURL(carrierPreview);
@@ -593,15 +556,12 @@ export default function ImageCloak() {
                   <div className="space-y-6">
                      <Step step={1} title="Choose Carrier Image">
                         <Tabs value={carrierSource} onValueChange={(value) => setCarrierSource(value as CarrierSource)} className="w-full">
-                          <TabsList className="grid w-full grid-cols-3">
+                          <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="upload">
                               <UploadCloud className="mr-2 h-4 w-4" /> Upload
                             </TabsTrigger>
                             <TabsTrigger value="random">
                               <Wand2 className="mr-2 h-4 w-4" /> Random
-                            </TabsTrigger>
-                            <TabsTrigger value="ai">
-                              <Sparkles className="mr-2 h-4 w-4" /> AI Generate
                             </TabsTrigger>
                           </TabsList>
                           <TabsContent value="upload" className="mt-4">
@@ -629,27 +589,6 @@ export default function ImageCloak() {
                                     <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4 h-full">
                                       <Wand2 className="w-10 h-10 mb-4 text-primary" />
                                       <p className="mb-2 text-sm text-foreground/80">Your generated image will appear here</p>
-                                    </div>
-                                </FileDropzone>
-                          </TabsContent>
-                          <TabsContent value="ai" className="mt-4 space-y-4">
-                                <div className="space-y-2">
-                                  <Label htmlFor="ai-prompt">AI Prompt</Label>
-                                  <Textarea id="ai-prompt" placeholder="e.g., A photo of an astronaut riding a horse on Mars" value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} />
-                                </div>
-                                <Button type="button" className="w-full" disabled={isGenerating} onClick={handleAiGenerate}>
-                                  {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                                  Generate with AI
-                                </Button>
-                                <FileDropzone 
-                                  onDrop={(e) => handleDrop(e, 'carrier')}
-                                  onDragOver={handleDragOver}
-                                  preview={carrierPreview}
-                                  onClear={() => onClear('carrier')}
-                                  activeFilter={activeFilter}>
-                                    <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4 h-full">
-                                      <Sparkles className="w-10 h-10 mb-4 text-primary" />
-                                      <p className="mb-2 text-sm text-foreground/80">Your AI-generated image will appear here</p>
                                     </div>
                                 </FileDropzone>
                           </TabsContent>

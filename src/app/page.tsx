@@ -50,7 +50,7 @@ export default function Home() {
       <main className="flex-grow">
         {/* Hero Section */}
         <section className="py-24 md:py-40 text-center animate-fade-in-down relative overflow-hidden">
-           <div className="absolute inset-0 bg-grid-slate-900/[0.04] bg-[bottom_1px_center] dark:bg-grid-slate-400/[0.05] dark:bg-bottom mask-image:[linear-gradient(to_bottom,transparent,black)]"></div>
+           <div className="absolute inset-0 bg-grid-slate-900/[0.04] bg-[bottom_1px_center] dark:bg-grid-slate-400/[0.od5] dark:bg-bottom mask-image:[linear-gradient(to_bottom,transparent,black)]"></div>
           <div className="container mx-auto px-4 relative">
             <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-foreground mb-4">
               Hide Secrets in Plain Sight
