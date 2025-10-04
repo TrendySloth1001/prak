@@ -117,6 +117,7 @@ export default function ImageCloak() {
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalyzeImageOutput | null>(null);
+  const [isAnalysisOnCooldown, setIsAnalysisOnCooldown] = useState(false);
 
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -473,7 +474,7 @@ export default function ImageCloak() {
   };
 
     const handleAnalyzeImage = async () => {
-    if (!carrierImage) return;
+    if (!carrierImage || isAnalyzing || isAnalysisOnCooldown) return;
     setIsAnalyzing(true);
     setAnalysisResult(null);
     try {
@@ -501,6 +502,8 @@ export default function ImageCloak() {
         })
     } finally {
         setIsAnalyzing(false);
+        setIsAnalysisOnCooldown(true);
+        setTimeout(() => setIsAnalysisOnCooldown(false), 20000); // 20-second cooldown
     }
 };
 
@@ -643,9 +646,9 @@ export default function ImageCloak() {
                           <Separator />
                            <Step step={2} title="Analyze & Add Effects">
                                <div className="space-y-4">
-                                  <Button type="button" variant="outline" className="w-full" onClick={handleAnalyzeImage} disabled={isAnalyzing}>
+                                  <Button type="button" variant="outline" className="w-full" onClick={handleAnalyzeImage} disabled={isAnalyzing || isAnalysisOnCooldown}>
                                       {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bot className="mr-2 h-4 w-4" />}
-                                      Analyze Image Suitability
+                                      {isAnalysisOnCooldown ? 'On Cooldown' : 'Analyze Image Suitability'}
                                   </Button>
                                     {analysisResult && (
                                         <Alert>
@@ -921,5 +924,7 @@ export default function ImageCloak() {
     </div>
   );
 }
+
+    
 
     
