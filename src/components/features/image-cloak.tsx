@@ -24,6 +24,59 @@ type DecodedDataType = { type: 'text'; content: string } | { type: 'file'; conte
 type CarrierSource = 'upload' | 'random';
 type FilterType = 'original' | 'grayscale' | 'sepia';
 
+const FileDropzone = ({ id, onFileChange, onDrop, onDragOver, preview, onClear, children, className, activeFilter }: { id?: string, onFileChange?: React.ChangeEventHandler<HTMLInputElement>, onDrop: React.DragEventHandler<HTMLLabelElement>, onDragOver: React.DragEventHandler<HTMLLabelElement>, preview: string | null, onClear: () => void, children?: React.ReactNode, className?: string, activeFilter?: FilterType }) => (
+    <div className="relative">
+      <Label
+        htmlFor={id}
+        onDrop={onDrop}
+        onDragOver={onDragOver}
+        className={cn(
+          `flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted/80 transition-colors`,
+          preview ? 'border-primary' : 'border-border',
+          className
+        )}
+      >
+        {preview ? (
+            <Image 
+                src={preview} 
+                alt="Image preview" 
+                fill 
+                className={cn(
+                    "object-contain rounded-lg p-2",
+                    activeFilter === 'grayscale' && 'grayscale',
+                    activeFilter === 'sepia' && 'sepia'
+                )} 
+            />
+        ) : (
+          children || (
+            <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+              <UploadCloud className="w-10 h-10 mb-4 text-primary" />
+              <p className="mb-2 text-sm text-foreground/80"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+              <p className="text-xs text-muted-foreground">PNG, JPG, or GIF</p>
+            </div>
+          )
+        )}
+        {id && <Input id={id} type="file" accept="image/*" className="hidden" onChange={onFileChange} />}
+      </Label>
+      {preview && (
+        <Button variant="ghost" size="icon" className="absolute top-2 right-2 bg-background/50 hover:bg-background/80 rounded-full z-10" onClick={onClear}>
+            <X className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
+  
+const Step = ({ step, title, children }: { step: number; title: string; children: React.ReactNode }) => (
+    <div className="space-y-4">
+        <div className="flex items-center gap-4">
+            <div className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-primary text-primary-foreground font-bold">{step}</div>
+            <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
+        </div>
+        <div className="pl-12">
+            {children}
+        </div>
+    </div>
+);
 
 export default function ImageCloak() {
   const { toast } = useToast();
@@ -303,60 +356,6 @@ export default function ImageCloak() {
     setEncodePassword(key);
   };
 
-  const FileDropzone = ({ id, onFileChange, onDrop, onDragOver, preview, onClear, children, className }: { id?: string, onFileChange?: React.ChangeEventHandler<HTMLInputElement>, onDrop: React.DragEventHandler<HTMLLabelElement>, onDragOver: React.DragEventHandler<HTMLLabelElement>, preview: string | null, onClear: () => void, children?: React.ReactNode, className?: string }) => (
-    <div className="relative">
-      <Label
-        htmlFor={id}
-        onDrop={onDrop}
-        onDragOver={onDragOver}
-        className={cn(
-          `flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted/80 transition-colors`,
-          preview ? 'border-primary' : 'border-border',
-          className
-        )}
-      >
-        {preview ? (
-            <Image 
-                src={preview} 
-                alt="Image preview" 
-                fill 
-                className={cn(
-                    "object-contain rounded-lg p-2",
-                    activeFilter === 'grayscale' && 'grayscale',
-                    activeFilter === 'sepia' && 'sepia'
-                )} 
-            />
-        ) : (
-          children || (
-            <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
-              <UploadCloud className="w-10 h-10 mb-4 text-primary" />
-              <p className="mb-2 text-sm text-foreground/80"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-              <p className="text-xs text-muted-foreground">PNG, JPG, or GIF</p>
-            </div>
-          )
-        )}
-        {id && <Input id={id} type="file" accept="image/*" className="hidden" onChange={onFileChange} />}
-      </Label>
-      {preview && (
-        <Button variant="ghost" size="icon" className="absolute top-2 right-2 bg-background/50 hover:bg-background/80 rounded-full z-10" onClick={onClear}>
-            <X className="h-4 w-4" />
-        </Button>
-      )}
-    </div>
-  );
-  
-  const Step = ({ step, title, children }: { step: number; title: string; children: React.ReactNode }) => (
-    <div className="space-y-4">
-        <div className="flex items-center gap-4">
-            <div className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-primary text-primary-foreground font-bold">{step}</div>
-            <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
-        </div>
-        <div className="pl-12">
-            {children}
-        </div>
-    </div>
-  );
-
   return (
     <div className="w-full">
       <canvas ref={canvasRef} className="hidden"></canvas>
@@ -404,6 +403,7 @@ export default function ImageCloak() {
                               onDragOver={handleDragOver}
                               preview={carrierPreview}
                               onClear={() => onClear('carrier')}
+                              activeFilter={activeFilter}
                             />
                           </TabsContent>
                           <TabsContent value="random" className="mt-4 space-y-4">
@@ -415,7 +415,8 @@ export default function ImageCloak() {
                                   onDrop={(e) => handleDrop(e, 'carrier')}
                                   onDragOver={handleDragOver}
                                   preview={carrierPreview}
-                                  onClear={() => onClear('carrier')}>
+                                  onClear={() => onClear('carrier')}
+                                  activeFilter={activeFilter}>
                                     <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4 h-full">
                                       <Wand2 className="w-10 h-10 mb-4 text-primary" />
                                       <p className="mb-2 text-sm text-foreground/80">Your generated image will appear here</p>
