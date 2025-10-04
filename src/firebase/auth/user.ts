@@ -19,24 +19,24 @@ import type { EncodedImage } from '@/lib/types';
  * @param user - The Firebase Auth user object.
  */
 export function upsertUserProfile(firestore: Firestore, user: User) {
-  // const userRef = doc(firestore, `users/${user.uid}`);
-  // const userData = {
-  //   uid: user.uid,
-  //   email: user.email,
-  //   displayName: user.displayName,
-  //   photoURL: user.photoURL,
-  //   createdAt: serverTimestamp(), // Use server timestamp for consistency
-  // };
+  const userRef = doc(firestore, `users/${user.uid}`);
+  const userData = {
+    uid: user.uid,
+    email: user.email,
+    displayName: user.displayName,
+    photoURL: user.photoURL,
+    createdAt: serverTimestamp(), // Use server timestamp for consistency
+  };
 
-  // // Use setDoc with merge:true to create or update without overwriting
-  // setDoc(userRef, userData, { merge: true }).catch((serverError) => {
-  //   const permissionError = new FirestorePermissionError({
-  //     path: userRef.path,
-  //     operation: 'write',
-  //     requestResourceData: userData,
-  //   });
-  //   errorEmitter.emit('permission-error', permissionError);
-  // });
+  // Use setDoc with merge:true to create or update without overwriting
+  setDoc(userRef, userData, { merge: true }).catch((serverError) => {
+    const permissionError = new FirestorePermissionError({
+      path: userRef.path,
+      operation: 'write',
+      requestResourceData: userData,
+    });
+    errorEmitter.emit('permission-error', permissionError);
+  });
 }
 
 
@@ -48,22 +48,22 @@ export function upsertUserProfile(firestore: Firestore, user: User) {
  * @param imageData - The data for the encoded image.
  */
 export function saveEncodedImage(firestore: Firestore, userId: string, imageData: Omit<EncodedImage, 'id' | 'encodingDateTime'>) {
-    // const imageRef = doc(collection(firestore, `users/${userId}/encodedImages`));
+    const imageRef = doc(collection(firestore, `users/${userId}/encodedImages`));
 
-    // const newImageData = {
-    //     ...imageData,
-    //     id: imageRef.id,
-    //     userId: userId,
-    //     encodingDateTime: serverTimestamp()
-    // };
+    const newImageData = {
+        ...imageData,
+        id: imageRef.id,
+        userId: userId,
+        encodingDateTime: serverTimestamp()
+    };
 
-    // setDoc(imageRef, newImageData)
-    //     .catch((serverError) => {
-    //         const permissionError = new FirestorePermissionError({
-    //             path: imageRef.path,
-    //             operation: 'create',
-    //             requestResourceData: newImageData,
-    //         });
-    //         errorEmitter.emit('permission-error', permissionError);
-    //     });
+    setDoc(imageRef, newImageData)
+        .catch((serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: imageRef.path,
+                operation: 'create',
+                requestResourceData: newImageData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
 }
