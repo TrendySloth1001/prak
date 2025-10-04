@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw, Palette, Type, Upload, Settings, ChevronDown, CheckCircle2, FileType, Image as ImageIcon, Eye, EyeOff, AlertCircle, Sparkles } from 'lucide-react';
+import { UploadCloud, File as FileIcon, KeyRound, Download, Loader2, Unplug, ShieldCheck, FileText, X, Wand2, RefreshCw, Palette, Type, Upload, Settings, ChevronDown, CheckCircle2, FileType, Image as ImageIcon, Eye, EyeOff, AlertCircle, Sparkles, Bot } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from '@/firebase';
@@ -20,10 +20,11 @@ import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { analyzeImage, AnalyzeImageOutput } from '@/ai/flows/analyze-image-flow';
 
 type DataType = 'text' | 'file';
 type DecodedDataType = { type: 'text'; content: string } | { type: 'file'; content: File, textContent: string | null };
-type CarrierSource = 'upload' | 'random' | 'ai';
+type CarrierSource = 'upload' | 'random';
 type FilterType = 'original' | 'grayscale' | 'sepia';
 type AlgorithmType = 'AES-256' | 'Serpent' | 'Twofish';
 type EncodingLog = { message: string; status: 'pending' | 'complete' | 'error' };
@@ -115,6 +116,10 @@ export default function ImageCloak() {
   const [encodingLogs, setEncodingLogs] = useState<EncodingLog[]>([]);
   const [decodingLogs, setDecodingLogs] = useState<EncodingLog[]>([]);
 
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<AnalyzeImageOutput | null>(null);
+
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
 
@@ -192,6 +197,8 @@ export default function ImageCloak() {
     setCarrierPreview(null);
     setRandomImageUrl('');
     setActiveFilter('original');
+    setAnalysisResult(null);
+
     try {
       const randomSeed = Math.floor(Math.random() * 1000);
       const imageUrl = `https://picsum.photos/seed/${randomSeed}/800/600`;
@@ -228,6 +235,7 @@ export default function ImageCloak() {
         setRandomImageUrl(''); // Clear random image URL
         setActiveFilter('original');
         setWatermark('');
+        setAnalysisResult(null);
       } else if (type === 'source') {
         const newPreviewUrl = URL.createObjectURL(file);
         if(sourcePreview) URL.revokeObjectURL(sourcePreview);
@@ -258,6 +266,7 @@ export default function ImageCloak() {
         setRandomImageUrl(''); // Clear random image URL
         setActiveFilter('original');
         setWatermark('');
+        setAnalysisResult(null);
       } else if (type === 'source') {
         const newPreviewUrl = URL.createObjectURL(file);
         if(sourcePreview) URL.revokeObjectURL(sourcePreview);
@@ -447,10 +456,13 @@ export default function ImageCloak() {
       setRandomImageUrl('');
       setActiveFilter('original');
       setWatermark('');
+      setAnalysisResult(null);
     } else if (type === 'source') {
       if (sourcePreview) URL.revokeObjectURL(sourcePreview);
       setSourceImage(null);
       setSourcePreview(null);
+      setDecodedData(null);
+      setDecodingLogs([]);
     } else if (type === 'secret') {
         setSecretFile(null);
     }
@@ -460,6 +472,34 @@ export default function ImageCloak() {
     const key = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
     setEncodePassword(key);
   };
+
+    const handleAnalyzeImage = async () => {
+    if (!carrierImage) return;
+    setIsAnalyzing(true);
+    setAnalysisResult(null);
+    try {
+        const reader = new FileReader();
+        reader.readAsDataURL(carrierImage);
+        reader.onload = async () => {
+            const imageDataUri = reader.result as string;
+            const result = await analyzeImage({ image: imageDataUri });
+            setAnalysisResult(result);
+            toast({
+                title: "Analysis Complete",
+                description: "The AI has provided feedback on your image.",
+            })
+        };
+    } catch (error) {
+        console.error("Analysis failed:", error);
+        toast({
+            variant: "destructive",
+            title: "Analysis Failed",
+            description: "Could not analyze the image. Please try again.",
+        })
+    } finally {
+        setIsAnalyzing(false);
+    }
+};
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -598,8 +638,21 @@ export default function ImageCloak() {
                     {carrierPreview && (
                         <div className="space-y-4 animate-in fade-in">
                           <Separator />
-                           <Step step={2} title="Add Effects (Optional)">
+                           <Step step={2} title="Analyze & Add Effects">
                                <div className="space-y-4">
+                                  <Button type="button" variant="outline" className="w-full" onClick={handleAnalyzeImage} disabled={isAnalyzing}>
+                                      {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bot className="mr-2 h-4 w-4" />}
+                                      Analyze Image Suitability
+                                  </Button>
+                                    {analysisResult && (
+                                        <Alert>
+                                            <Sparkles className="h-4 w-4" />
+                                            <AlertTitle>{analysisResult.suitability}</AlertTitle>
+                                            <AlertDescription>
+                                                {analysisResult.reason}
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
                                   <div className="flex items-center gap-2">
                                       <Palette className="h-5 w-5 text-muted-foreground" />
                                       <Label className="font-normal">Filter:</Label>
