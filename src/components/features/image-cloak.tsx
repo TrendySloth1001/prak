@@ -714,6 +714,13 @@ export default function ImageCloak() {
                     
                     <div className="flex flex-col items-center gap-4 w-full">
                         <h3 className="text-lg font-semibold tracking-tight">Ready to Go!</h3>
+                         <Alert className="max-w-sm w-full">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Security Feature</AlertTitle>
+                            <AlertDescription>
+                                For security, extracted data is designed to be revealed only once per session.
+                            </AlertDescription>
+                        </Alert>
                         <Button type="submit" disabled={isEncoding || !user} size="lg" className="w-full max-w-sm bg-accent text-accent-foreground hover:bg-accent/90">
                             <ShieldCheck className="mr-2 h-5 w-5" />
                             {isEncoding ? 'Embedding Data...' : 'Save Metadata'}
